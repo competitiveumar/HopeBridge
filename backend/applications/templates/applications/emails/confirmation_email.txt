@@ -1,0 +1,26 @@
+Application Received - {{ site_name }}
+===============================
+
+Dear {{ application.contact_first_name }},
+
+Thank you for submitting your application for {{ application.organization_name }} to HopeBridge. We have received your application and it is now pending review.
+
+Application Details:
+- Organization: {{ application.organization_name }}
+- Application ID: {{ application.id }}
+- Submitted: {{ application.submitted_at|date:"F j, Y, g:i a" }}
+- Status: {{ application.get_status_display }}
+
+Our team will review your application and get back to you within 5-7 business days. You may be contacted if we need additional information or clarification.
+
+If you have any questions or need to provide additional information, please reply to this email or contact us at support@hopebridge.org.
+
+Thank you for your interest in joining the HopeBridge community!
+
+Best regards,
+The HopeBridge Team
+
+Visit our website: {{ site_url }}
+
+© {{ site_name }} {{ application.submitted_at|date:"Y" }}. All rights reserved.
+This email was sent to {{ application.contact_email }} because you submitted an application to {{ site_name }}. 

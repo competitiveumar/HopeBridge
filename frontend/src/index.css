@@ -1,0 +1,144 @@
+body {
+  margin: 0;
+  font-family: 'Roboto', 'Helvetica', 'Arial', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: #F5F5F5;
+  color: #333333;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 16px;
+}
+
+.section {
+  padding: 64px 0;
+}
+
+.section-title {
+  text-align: center;
+  margin-bottom: 48px;
+}
+
+.hero-section {
+  background-image: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5));
+  background-size: cover;
+  background-position: center;
+  color: white;
+  padding: 120px 0;
+  text-align: center;
+}
+
+.impact-card {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.impact-card-content {
+  flex-grow: 1;
+}
+
+.campaign-card {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.3s ease;
+}
+
+.campaign-card:hover {
+  transform: translateY(-5px);
+}
+
+.campaign-card-content {
+  flex-grow: 1;
+}
+
+.testimonial-card {
+  height: 100%;
+  padding: 24px;
+}
+
+.footer {
+  background-color: #333333;
+  color: white;
+  padding: 64px 0 32px;
+}
+
+.footer-links {
+  margin-bottom: 32px;
+}
+
+.footer-link {
+  color: #BBBBBB;
+  transition: color 0.3s ease;
+}
+
+.footer-link:hover {
+  color: white;
+}
+
+.social-icons {
+  display: flex;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.social-icon {
+  color: white;
+  transition: color 0.3s ease;
+}
+
+.social-icon:hover {
+  color: #4CAF50;
+}
+
+/* Animation classes */
+.fade-in {
+  animation: fadeIn 1s ease-in;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 960px) {
+  .section {
+    padding: 48px 0;
+  }
+  
+  .hero-section {
+    padding: 80px 0;
+  }
+}
+
+@media (max-width: 600px) {
+  .section {
+    padding: 32px 0;
+  }
+  
+  .hero-section {
+    padding: 64px 0;
+  }
+  
+  .section-title {
+    margin-bottom: 32px;
+  }
+} 
