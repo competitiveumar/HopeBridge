@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Application Approved - {{ site_name }}</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background-color: #4CAF50;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        .content {
+            padding: 20px;
+            background-color: #f9f9f9;
+        }
+        .footer {
+            padding: 20px;
+            text-align: center;
+            font-size: 12px;
+            color: #777;
+        }
+        h1 {
+            color: #333;
+            margin-top: 0;
+        }
+        .button {
+            display: inline-block;
+            background-color: #4CAF50;
+            color: white;
+            text-decoration: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            margin-top: 20px;
+        }
+        .info {
+            background-color: #e9f7ef;
+            border-left: 4px solid #4CAF50;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        .success {
+            color: #4CAF50;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Application Approved!</h1>
+        </div>
+        <div class="content">
+            <p>Dear {{ application.contact_first_name }},</p>
+            
+            <p>We are pleased to inform you that your application for <strong>{{ application.organization_name }}</strong> has been <span class="success">APPROVED</span>!</p>
+            
+            <div class="info">
+                <p><strong>Application Details:</strong></p>
+                <ul>
+                    <li><strong>Organization:</strong> {{ application.organization_name }}</li>
+                    <li><strong>Application ID:</strong> {{ application.id }}</li>
+                    <li><strong>Submitted:</strong> {{ application.submitted_at|date:"F j, Y" }}</li>
+                    <li><strong>Status:</strong> {{ application.get_status_display }}</li>
+                </ul>
+            </div>
+            
+            {% if application.status_notes %}
+            <p><strong>Reviewer Notes:</strong></p>
+            <p>{{ application.status_notes }}</p>
+            {% endif %}
+            
+            <h3>Next Steps</h3>
+            <ol>
+                <li>Complete your organization profile by logging into your account</li>
+                <li>Set up your payment information to receive donations</li>
+                <li>Create your first campaign to start raising funds</li>
+            </ol>
+            
+            <p>Our team is here to support you every step of the way. If you have any questions or need assistance, please don't hesitate to contact us at <a href="mailto:support@hopebridge.org">support@hopebridge.org</a>.</p>
+            
+            <p>Welcome to the HopeBridge community! We're excited to partner with you to make a positive impact in the world.</p>
+            
+            <p>Best regards,<br>
+            The HopeBridge Team</p>
+            
+            <a href="{{ site_url }}/dashboard" class="button">Go to Your Dashboard</a>
+        </div>
+        <div class="footer">
+            <p>&copy; {{ site_name }} {{ application.submitted_at|date:"Y" }}. All rights reserved.</p>
+            <p>This email was sent to {{ application.contact_email }} because you submitted an application to {{ site_name }}.</p>
+        </div>
+    </div>
+</body>
+</html> 
