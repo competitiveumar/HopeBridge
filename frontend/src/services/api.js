@@ -1,75 +1,42 @@
 import axios from 'axios';
 
-// Create axios instance with default config
+// Create axios instance with base URL
 const api = axios.create({
-  baseURL: process.env.NODE_ENV === 'production' ? '/api' : 'http://localhost:8000/api',
+  baseURL: 'http://localhost:8000/api',
   headers: {
     'Content-Type': 'application/json',
   },
-  withCredentials: true, // Important for handling cookies if needed
 });
 
-// Add request interceptor to include auth token
+// Add a request interceptor to include the auth token
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('accessToken');
+    // Get the token from localStorage
+    const token = localStorage.getItem('authToken');
+    
+    // If token exists, add it to the headers
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    
     return config;
   },
-  (error) => Promise.reject(error)
+  (error) => {
+    return Promise.reject(error);
+  }
 );
 
-// Add response interceptor to handle errors and token refresh
+// Add a response interceptor to handle errors
 api.interceptors.response.use(
-  (response) => response,
-  async (error) => {
-    const originalRequest = error.config;
-    
-    // If error is 401 (Unauthorized) and we haven't tried to refresh the token yet
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
-      
-      try {
-        const refreshToken = localStorage.getItem('refreshToken');
-        
-        if (!refreshToken) {
-          // No refresh token available, user needs to login again
-          return Promise.reject(error);
-        }
-        
-        // Try to refresh the token
-        const response = await axios.post(
-          process.env.NODE_ENV === 'production' 
-            ? '/api/users/token/refresh/' 
-            : 'http://localhost:8000/api/users/token/refresh/', 
-          {
-            refresh: refreshToken
-          }
-        );
-        
-        const { access } = response.data;
-        
-        // Update the access token in localStorage
-        localStorage.setItem('accessToken', access);
-        
-        // Update the Authorization header for the original request
-        originalRequest.headers.Authorization = `Bearer ${access}`;
-        
-        // Retry the original request with the new token
-        return axios(originalRequest);
-      } catch (refreshError) {
-        // If refresh fails, clear tokens and reject the promise
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('refreshToken');
-        
-        console.error('Token refresh failed:', refreshError);
-        return Promise.reject(error);
-      }
+  (response) => {
+    return response;
+  },
+  (error) => {
+    // Handle 401 errors (unauthorized)
+    if (error.response && error.response.status === 401) {
+      console.log('Unauthorized request - token may be invalid or expired');
+      // You can redirect to login or refresh token here if needed
     }
-    
-    console.error('API Error:', error.response?.data || error.message);
     return Promise.reject(error);
   }
 );
@@ -148,6 +115,42 @@ export const nonprofitsService = {
   getResources: () => {
     return api.get('/nonprofits/resources/');
   },
+};
+
+// Donation API services
+export const donationService = {
+  // Create a payment intent
+  createPaymentIntent: (paymentData) => {
+    return api.post('/donations/create-payment-intent/', paymentData);
+  },
+  
+  // Update project donation total
+  updateProjectTotal: (projectId, amount) => {
+    return api.post('/donations/update-project-total/', { 
+      projectId,
+      amount
+    });
+  },
+  
+  // Get project donations
+  getProjectDonations: (projectId) => {
+    return api.get(`/donations/projects/${projectId}/donations/`);
+  },
+  
+  // Get all user donations
+  getUserDonations: () => {
+    return api.get('/donations/user/');
+  },
+  
+  // Record a new donation
+  recordDonation: (donationData) => {
+    return api.post('/donations/record/', donationData);
+  },
+  
+  // Get donation statistics
+  getStatistics: () => {
+    return api.get('/donations/statistics/');
+  }
 };
 
 // Gift Cards API services

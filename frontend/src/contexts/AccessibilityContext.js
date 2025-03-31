@@ -8,7 +8,6 @@ import {
   restoreTextContrast,
   createSkipLink
 } from '../utils/accessibilityUtils';
-import { toggleGoogleTranslate, cleanupGoogleTranslate } from '../utils/googleTranslateUtils';
 
 export const AccessibilityContext = createContext();
 
@@ -22,15 +21,12 @@ export const useAccessibility = () => {
 
 export const AccessibilityProvider = ({ children }) => {
   const [settings, setSettings] = useState({
-    highContrast: false,
     grayscale: false,
     textSize: 100,
     screenReader: false,
     captions: false,
     keyboardNav: true,
-    voiceCommands: false,
-    googleTranslate: false,
-    language: 'en'
+    voiceCommands: false
   });
 
   // Load settings from localStorage on component mount
@@ -38,16 +34,7 @@ export const AccessibilityProvider = ({ children }) => {
     const savedSettings = localStorage.getItem('accessibilitySettings');
     if (savedSettings) {
       try {
-        const parsedSettings = JSON.parse(savedSettings);
-        
-        // Ensure Google Translate starts off regardless of saved state
-        parsedSettings.googleTranslate = false;
-        
-        // Apply the saved settings
-        setSettings(parsedSettings);
-        
-        // Clean up any existing Google Translate elements
-        cleanupGoogleTranslate();
+        setSettings(JSON.parse(savedSettings));
       } catch (error) {
         console.error("Error loading accessibility settings", error);
       }
@@ -59,7 +46,6 @@ export const AccessibilityProvider = ({ children }) => {
     localStorage.setItem('accessibilitySettings', JSON.stringify(settings));
     
     // Apply data attributes to the document for CSS targeting
-    document.documentElement.setAttribute('data-high-contrast', settings.highContrast);
     document.documentElement.setAttribute('data-grayscale', settings.grayscale);
     
     // Apply text size
@@ -67,13 +53,6 @@ export const AccessibilityProvider = ({ children }) => {
       document.documentElement.style.fontSize = `${settings.textSize}%`;
     } else {
       document.documentElement.style.fontSize = '';
-    }
-
-    // Handle Google Translate toggle
-    if (!settings.googleTranslate) {
-      cleanupGoogleTranslate();
-      // Clear saved language preference
-      localStorage.removeItem('selectedTranslateLanguage');
     }
   }, [settings]);
 
@@ -98,13 +77,6 @@ export const AccessibilityProvider = ({ children }) => {
       enhanceMediaAccessibility(true);
     } else {
       enhanceMediaAccessibility(false);
-    }
-    
-    // Apply high contrast if enabled
-    if (settings.highContrast) {
-      improveTextContrast(true);
-    } else {
-      restoreTextContrast();
     }
     
     // Apply grayscale if enabled
@@ -147,25 +119,18 @@ export const AccessibilityProvider = ({ children }) => {
 
   const resetSettings = useCallback(() => {
     setSettings({
-      highContrast: false,
       grayscale: false,
       textSize: 100,
       screenReader: false,
       captions: false,
       keyboardNav: true,
-      voiceCommands: false,
-      googleTranslate: false,
-      language: 'en'
+      voiceCommands: false
     });
     
     // Reset all applied styles and attributes
     document.documentElement.style.filter = '';
     document.documentElement.style.fontSize = '';
-    document.documentElement.removeAttribute('data-high-contrast');
     document.documentElement.removeAttribute('data-grayscale');
-    
-    // Clean up Google Translate
-    cleanupGoogleTranslate();
     
     restoreTextContrast();
   }, []);

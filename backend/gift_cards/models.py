@@ -2,6 +2,7 @@ from django.db import models
 from django.contrib.auth.models import User
 import uuid
 from datetime import datetime, timedelta
+from django.utils import timezone
 
 class GiftCardDesign(models.Model):
     """Model for gift card designs/templates"""
@@ -15,7 +16,7 @@ class GiftCardDesign(models.Model):
         return self.name
 
 def default_expiration_date():
-    return datetime.now() + timedelta(days=365)
+    return timezone.now() + timedelta(days=365)
 
 class GiftCard(models.Model):
     """Model for gift cards"""
@@ -69,14 +70,14 @@ class GiftCard(models.Model):
         if self.status == 'active':
             self.status = 'redeemed'
             self.redeemed_by = user
-            self.redeemed_at = datetime.now()
+            self.redeemed_at = timezone.now()
             self.save()
             return True
         return False
     
     def is_valid(self):
         """Check if gift card is valid for redemption"""
-        return self.status == 'active' and self.expiration_date > datetime.now()
+        return self.status == 'active' and self.expiration_date > timezone.now()
 
 class GiftCardRedemption(models.Model):
     """Model to track gift card redemptions"""

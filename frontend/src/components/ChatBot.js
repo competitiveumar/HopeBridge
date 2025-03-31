@@ -8,6 +8,7 @@ import ChatIcon from '@mui/icons-material/Chat';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 import axios from 'axios';
+import { registerUIControlListener, UI_EVENTS } from '../utils/uiControlUtils';
 
 // Create a custom axios instance with better timeout handling
 const chatbotApi = axios.create({
@@ -54,6 +55,19 @@ const ChatBot = () => {
   const [isMinimized, setIsMinimized] = useState(false);
   const messagesEndRef = useRef(null);
   const healthCheckTimeoutRef = useRef(null);
+  
+  // Listen for toggle events from the header
+  useEffect(() => {
+    const handleToggleEvent = () => {
+      toggleChat();
+    };
+    
+    // Register the event listener
+    const unregister = registerUIControlListener(UI_EVENTS.TOGGLE_CHATBOT, handleToggleEvent);
+    
+    // Clean up when component unmounts
+    return unregister;
+  }, []);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -230,11 +244,14 @@ const ChatBot = () => {
               color="primary" 
               aria-label="chat"
               onClick={toggleChat}
+              className="chatbot-widget"
               sx={{ 
                 position: 'fixed',
                 bottom: 20,
                 right: 20,
-                boxShadow: 3
+                boxShadow: 3,
+                // Hide the button since it's now in the header
+                display: 'none'
               }}
             >
               <ChatIcon />
@@ -251,14 +268,25 @@ const ChatBot = () => {
             position: 'fixed', 
             bottom: 20, 
             right: 20, 
-            width: 350, 
-            height: isMinimized ? 'auto' : 450,
+            width: {
+              xs: 'calc(100% - 40px)',
+              sm: 350
+            }, 
+            height: isMinimized ? 'auto' : {
+              xs: 'calc(100% - 100px)',
+              sm: 450
+            },
+            maxHeight: {
+              xs: 'calc(100vh - 100px)',
+              sm: 450
+            },
             display: 'flex',
             flexDirection: 'column',
             borderRadius: 2,
             overflow: 'hidden',
             transition: 'all 0.3s ease',
-            boxShadow: 3
+            boxShadow: 3,
+            zIndex: 1200
           }}
         >
           <Box sx={{ 
@@ -307,16 +335,20 @@ const ChatBot = () => {
                 flex: 1, 
                 overflowY: 'auto', 
                 p: 2,
-                backgroundColor: '#f5f5f5'
+                backgroundColor: '#f5f5f5',
+                display: 'flex',
+                flexDirection: 'column'
               }}>
-                <List>
+                <List sx={{ width: '100%', padding: 0 }}>
                   {messages.map((message, index) => (
                     <ListItem
                       key={index}
                       sx={{
                         justifyContent: message.isBot ? 'flex-start' : 'flex-end',
                         mb: 1,
-                        gap: 1
+                        gap: 1,
+                        padding: '4px 0',
+                        width: '100%'
                       }}
                     >
                       {message.isBot && (
@@ -341,10 +373,12 @@ const ChatBot = () => {
                           color: message.isBot 
                             ? message.isError ? 'error.dark' : 'text.primary'
                             : 'white',
-                          borderRadius: 2
+                          borderRadius: 2,
+                          wordBreak: 'break-word',
+                          overflow: 'hidden'
                         }}
                       >
-                        <Typography variant="body1">
+                        <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
                           {message.text}
                         </Typography>
                       </Paper>
@@ -384,7 +418,12 @@ const ChatBot = () => {
               </Box>
 
               <Box sx={{ p: 2, backgroundColor: 'white', borderTop: 1, borderColor: 'divider' }}>
-                <Box sx={{ display: 'flex', gap: 1 }}>
+                <Box sx={{ 
+                  display: 'flex', 
+                  gap: 1,
+                  alignItems: 'center',
+                  width: '100%'
+                }}>
                   <TextField
                     fullWidth
                     variant="outlined"
@@ -394,6 +433,11 @@ const ChatBot = () => {
                     onChange={handleInputChange}
                     onKeyPress={handleKeyPress}
                     disabled={isLoading}
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: 2
+                      }
+                    }}
                   />
                   <IconButton 
                     color="primary" 

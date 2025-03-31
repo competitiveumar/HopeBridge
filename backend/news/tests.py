@@ -1,13 +1,14 @@
-from django.test import TestCase
+from django.test import TestCase, SimpleTestCase
 from django.contrib.auth import get_user_model
 from django.utils import timezone
-from django.urls import reverse
+from django.urls import reverse, resolve
 from rest_framework.test import APITestCase
 from rest_framework import status
 from .models import Category, Article, Video, FeaturedStory
 import tempfile
 from PIL import Image
 import io
+from django.apps import apps
 
 User = get_user_model()
 
@@ -254,4 +255,18 @@ class NewsAPITests(APITestCase):
         response = self.client.post(self.articles_url, data, format='multipart')
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(Article.objects.count(), 3)
-        self.assertEqual(Article.objects.get(title='New Article').author, self.user) 
+        self.assertEqual(Article.objects.get(title='New Article').author, self.user)
+
+class NewsConfigTest(SimpleTestCase):
+    """Tests for the news app configuration"""
+    
+    def test_app_config(self):
+        """Test news app is correctly configured"""
+        # Check if the app is installed
+        self.assertTrue(apps.is_installed('news'), 
+                      "News app should be installed")
+        
+        # Check if the app config is correct
+        app_config = apps.get_app_config('news')
+        self.assertEqual(app_config.name, 'news')
+        self.assertEqual(app_config.verbose_name, 'News') 

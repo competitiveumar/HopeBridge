@@ -1,62 +1,82 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { BrowserRouter } from 'react-router-dom';
-import { ThemeProvider } from '@mui/material/styles';
-import CssBaseline from '@mui/material/CssBaseline';
 import './index.css';
-import './styles/googleTranslate.css'; // Import Google Translate styles
 import App from './App';
 import reportWebVitals from './reportWebVitals';
+import { BrowserRouter } from 'react-router-dom';
+import { AuthProvider } from './contexts/AuthContext';
+import { SearchProvider } from './contexts/SearchContext';
+import { CartProvider } from './contexts/CartContext';
+import { ThemeProvider } from './contexts/ThemeContext';
+import { AccessibilityProvider } from './contexts/AccessibilityContext';
+import { NotificationProvider } from './contexts/NotificationContext';
+import { I18nextProvider } from 'react-i18next';
+import i18n from './i18n';
+import { ThemeProvider as MuiThemeProvider } from '@mui/material/styles';
+import CssBaseline from '@mui/material/CssBaseline';
 import theme from './theme';
-import './i18n'; // Import i18n configuration
+import { enhanceKeyboardNavigation, enhanceFormAccessibility, createSkipLink } from './utils/accessibilityUtils';
 
-// Add react-axe for accessibility testing in development
-if (process.env.NODE_ENV !== 'production') {
-  const axe = require('react-axe');
-  axe(React, ReactDOM, 1000, {
-    rules: [
-      // Include specific rules or disable some
-      { id: 'color-contrast', enabled: true },
-      { id: 'aria-roles', enabled: true },
-      { id: 'aria-valid-attr', enabled: true },
-      { id: 'image-alt', enabled: true },
-      { id: 'label', enabled: true },
-    ]
-  });
-}
+// Setup accessibility enhancements
+enhanceKeyboardNavigation();
+enhanceFormAccessibility();
+createSkipLink();
 
-// Add comment for screen readers when app is focused
-document.addEventListener('focusin', () => {
-  const focusedElement = document.activeElement;
-  if (focusedElement && focusedElement.tagName !== 'BODY') {
-    const ariaLabel = focusedElement.getAttribute('aria-label');
-    const text = focusedElement.textContent || '';
-    const description = ariaLabel || text;
-    if (description && description.trim()) {
-      const announcement = document.createElement('div');
-      announcement.setAttribute('aria-live', 'polite');
-      announcement.classList.add('screen-reader-only');
-      announcement.textContent = `Focused: ${description.trim()}`;
-      document.body.appendChild(announcement);
-      
-      // Remove after announcement
-      setTimeout(() => {
-        document.body.removeChild(announcement);
-      }, 1000);
-    }
+// Add global error handler for Chrome extension errors
+const originalConsoleError = console.error;
+console.error = function(message, ...args) {
+  // Check for the specific Chrome extension error
+  if (typeof message === 'string' && message.includes('Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist')) {
+    // Suppress this specific error from console output
+    console.log('Suppressed Chrome extension error');
+    return;
+  }
+  
+  // For all other errors, use the original console.error
+  originalConsoleError.apply(console, [message, ...args]);
+};
+
+// Handle unhandled promise rejections related to extension errors
+window.addEventListener('unhandledrejection', event => {
+  if (event.reason && event.reason.message && 
+      event.reason.message.includes('Receiving end does not exist')) {
+    // Prevent the default handling of the error
+    event.preventDefault();
+    console.log('Suppressed unhandled Chrome extension promise rejection');
   }
 });
 
+// Create a component to wrap all providers
+const Providers = ({ children }) => (
+  <React.StrictMode>
+    <I18nextProvider i18n={i18n}>
+      <MuiThemeProvider theme={theme}>
+        <ThemeProvider>
+          <BrowserRouter>
+            <AuthProvider>
+              <NotificationProvider>
+                <CartProvider>
+                  <SearchProvider>
+                    <AccessibilityProvider>
+                      <CssBaseline />
+                      {children}
+                    </AccessibilityProvider>
+                  </SearchProvider>
+                </CartProvider>
+              </NotificationProvider>
+            </AuthProvider>
+          </BrowserRouter>
+        </ThemeProvider>
+      </MuiThemeProvider>
+    </I18nextProvider>
+  </React.StrictMode>
+);
+
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
-  <React.StrictMode>
-    <BrowserRouter>
-      <ThemeProvider theme={theme}>
-        <CssBaseline />
-        <App />
-      </ThemeProvider>
-    </BrowserRouter>
-  </React.StrictMode>
+  <Providers>
+    <App />
+  </Providers>
 );
 
 // If you want to start measuring performance in your app, pass a function

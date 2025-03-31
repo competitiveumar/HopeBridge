@@ -11,8 +11,12 @@ User = get_user_model()
 class UserProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserProfile
-        fields = ['bio', 'phone_number', 'profile_image', 'address', 'city', 
-                 'state', 'zip_code', 'country']
+        fields = [
+            'id', 'user', 'user_type', 'phone_number', 'bio', 'profile_image',
+            'address', 'city', 'state', 'zip_code', 'country',
+            'email_notifications', 'sms_notifications', 'marketing_emails',
+            'donation_receipts', 'event_reminders', 'date_updated'
+        ]
 
 class NotificationSettingsSerializer(serializers.ModelSerializer):
     class Meta:

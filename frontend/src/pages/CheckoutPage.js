@@ -31,32 +31,85 @@ import axios from 'axios';
 import CreditCardIcon from '@mui/icons-material/CreditCard';
 import LockIcon from '@mui/icons-material/Lock';
 import PaymentIcon from '@mui/icons-material/Payment';
+import PublicIcon from '@mui/icons-material/Public';
 
 // Initialize Stripe with the provided key
 const stripePromise = loadStripe("pk_test_51QHsF0G1gQ9FCYqU9uxmuDnYM7j2JHHsatURg9MoIuU9fTtpQIxBkY3loT8upksRxJcrg0m4dnkmWEg9lz4QhisR00dVkROIrX");
 
-// Currency conversion rates (simplified for example)
-const currencyRates = {
-  USD: 1,
-  EUR: 0.85,
-  GBP: 0.73,
-  JPY: 110.32,
-  CAD: 1.25,
-  AUD: 1.33,
+// Default currency options
+const currencyOptions = [
+  { value: 'USD', label: 'US Dollar (USD)', symbol: '$' },
+  { value: 'EUR', label: 'Euro (EUR)', symbol: '€' },
+  { value: 'GBP', label: 'British Pound (GBP)', symbol: '£' },
+  { value: 'JPY', label: 'Japanese Yen (JPY)', symbol: '¥' },
+  { value: 'CAD', label: 'Canadian Dollar (CAD)', symbol: 'C$' },
+  { value: 'AUD', label: 'Australian Dollar (AUD)', symbol: 'A$' }
+];
+
+// CurrencySelector component
+const CurrencySelector = ({ selectedCurrency, onChange, exchangeRates, loading }) => {
+  return (
+    <FormControl fullWidth variant="outlined" sx={{ mb: 3 }}>
+      <InputLabel id="currency-select-label">Select Your Currency</InputLabel>
+      <Select
+        labelId="currency-select-label"
+        id="currency-select"
+        value={selectedCurrency}
+        onChange={onChange}
+        label="Select Your Currency"
+        startAdornment={
+          <InputAdornment position="start">
+            <PublicIcon />
+          </InputAdornment>
+        }
+      >
+        {currencyOptions.map((option) => (
+          <MenuItem key={option.value} value={option.value}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
+              <span>{option.label}</span>
+              {loading ? (
+                <CircularProgress size={16} />
+              ) : (
+                exchangeRates[option.value] && (
+                  <Typography variant="body2" color="text.secondary">
+                    1 USD = {exchangeRates[option.value].toFixed(4)} {option.value}
+                  </Typography>
+                )
+              )}
+            </Box>
+          </MenuItem>
+        ))}
+      </Select>
+    </FormControl>
+  );
 };
 
 // Credit/Debit Card Form with Stripe
-const CreditDebitForm = ({ onSuccess, onError, processing, setProcessing, selectedCurrency }) => {
+const CreditDebitForm = ({ onSuccess, onError, processing, setProcessing, selectedCurrency, exchangeRates }) => {
   const { currentUser } = useAuth();
-  const { clearCart, getSubtotal, isRecurring, recurringFrequency } = useCart();
+  const { clearCart, getCartTotal, isRecurring, recurringFrequency } = useCart();
   const stripe = useStripe();
   const elements = useElements();
   const [error, setError] = useState(null);
   const [email, setEmail] = useState(currentUser?.email || '');
   const [name, setName] = useState(currentUser?.displayName || '');
   
+  // Get the appropriate currency symbol
+  const getCurrencySymbol = (currency) => {
+    const option = currencyOptions.find(opt => opt.value === currency);
+    return option ? option.symbol : '$';
+  };
+  
   // Convert amount based on selected currency
-  const convertedAmount = getSubtotal() * (currencyRates[selectedCurrency] || 1);
+  const convertAmount = (amount, toCurrency) => {
+    if (!exchangeRates || !exchangeRates[toCurrency]) {
+      return amount; // Return original amount if rates aren't available
+    }
+    return amount * exchangeRates[toCurrency];
+  };
+  
+  const baseAmount = getCartTotal();
+  const convertedAmount = convertAmount(baseAmount, selectedCurrency);
   
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -83,42 +136,95 @@ const CreditDebitForm = ({ onSuccess, onError, processing, setProcessing, select
         throw new Error(stripeError.message);
       }
 
-      // Create payment intent through your backend
+      // Check if backend server is running before attempting API call
       try {
-        const { data } = await axios.post('/api/donations/create-payment-intent/', {
-          amount: convertedAmount,
-          currency: selectedCurrency,
-          payment_method_id: paymentMethod.id,
-          is_recurring: isRecurring,
-          recurring_frequency: isRecurring ? recurringFrequency : null,
-          email: email,
-          name: name
-        });
+        let backendAvailable = false;
         
-        // Handle additional actions like 3D Secure
-        if (data.requires_action) {
-          const { error } = await stripe.handleCardAction(data.payment_intent_client_secret);
-          if (error) {
-            throw new Error(error.message);
+        // Only attempt to ping health check endpoint if not on localhost (as it may not exist yet)
+        if (window.location.hostname !== 'localhost' && process.env.NODE_ENV !== 'development') {
+          try {
+            // Try to ping backend health check endpoint with short timeout
+            await axios.get('/api/health-check/', { timeout: 2000 });
+            backendAvailable = true;
+          } catch (healthCheckError) {
+            console.log('Health check failed, proceeding with caution:', healthCheckError.message);
+            // Continue anyway and let the main API call attempt to work
           }
+        } else {
+          // Skip health check in development mode
+          console.log('Skipping health check in development environment');
+          backendAvailable = false;
         }
         
-        // Payment was successful
-        clearCart();
-        onSuccess([data.payment_id || 'stripe_payment_' + Date.now()]);
-      } catch (apiError) {
-        console.error('API Error:', apiError);
-        // If backend API fails, fall back to frontend-only flow for demo
-        setTimeout(() => {
+        // Only attempt the real API call if the backend is available or we're not in development
+        if (backendAvailable || (process.env.NODE_ENV !== 'development' && window.location.hostname !== 'localhost')) {
+          // Set a timeout of 10 seconds for the API call
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 10000);
+          
+          // Create payment intent through your backend
+          const { data } = await axios.post('/api/donations/create-payment-intent/', {
+            amount: convertedAmount,
+            currency: selectedCurrency,
+            payment_method_id: paymentMethod.id,
+            is_recurring: isRecurring,
+            recurring_frequency: isRecurring ? recurringFrequency : null,
+            email: email,
+            name: name,
+            // Include original amount for proper recipient processing
+            original_amount_usd: baseAmount,
+            exchange_rate: exchangeRates[selectedCurrency] || 1
+          }, { 
+            signal: controller.signal,
+            timeout: 10000
+          });
+          
+          clearTimeout(timeoutId);
+          
+          // Handle additional actions like 3D Secure
+          if (data.requires_action) {
+            const { error } = await stripe.handleCardAction(data.payment_intent_client_secret);
+            if (error) {
+              throw new Error(error.message);
+            }
+          }
+          
+          // Payment was successful
           clearCart();
-          onSuccess(['stripe_payment_' + Date.now()]);
-          setProcessing(false);
-        }, 1500);
+          onSuccess([data.payment_id || 'stripe_payment_' + Date.now()]);
+        } else {
+          // In development, skip the API call and use the fallback
+          throw new Error('Development environment detected - using fallback');
+        }
+      } catch (apiError) {
+        // Check if error is because of timeout
+        const isTimeout = apiError.code === 'ECONNABORTED' || 
+                         apiError.message.includes('timeout') || 
+                         apiError.message.includes('aborted');
+        
+        if (isTimeout) {
+          console.log('API timeout - using development fallback');
+        } else {
+          console.log(`API Error: ${apiError.message} - using development fallback`);
+        }
+        
+        // In development environment, simulate successful payment
+        // For production, this would be an error
+        if (process.env.NODE_ENV === 'development' || window.location.hostname === 'localhost') {
+          console.log('Using development fallback for payment processing');
+          // Simulate success after a short delay
+          clearCart();
+          onSuccess(['dev_stripe_payment_' + Date.now()]);
+        } else {
+          throw new Error('Payment processing service is currently unavailable. Please try again later.');
+        }
       }
       
     } catch (err) {
       setError(`Payment failed: ${err.message}`);
       onError(err.message);
+      setProcessing(false);
+    } finally {
       setProcessing(false);
     }
   };
@@ -213,6 +319,16 @@ const CreditDebitForm = ({ onSuccess, onError, processing, setProcessing, select
         )}
       </Button>
       
+      {/* Conversion information */}
+      {selectedCurrency !== 'USD' && (
+        <Box mt={2} p={1} sx={{ backgroundColor: '#f8f9fa', borderRadius: 1 }}>
+          <Typography variant="body2" color="text.secondary" align="center">
+            You'll be charged {convertedAmount.toLocaleString('en-US', { style: 'currency', currency: selectedCurrency })}.
+            The recipient will receive {baseAmount.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}.
+          </Typography>
+        </Box>
+      )}
+      
       {/* Test card information */}
       <Box mt={2} p={2} sx={{ backgroundColor: '#f5f5f5', borderRadius: 1 }}>
         <Typography variant="subtitle2" gutterBottom>
@@ -229,7 +345,7 @@ const CreditDebitForm = ({ onSuccess, onError, processing, setProcessing, select
 
 // Other Payment Methods
 const OtherPaymentForm = ({ onSuccess, onError, processing, setProcessing, selectedCurrency }) => {
-  const { clearCart, getSubtotal } = useCart();
+  const { clearCart, getCartTotal } = useCart();
   const [paymentType, setPaymentType] = useState('bank_transfer');
   
   const handleOtherPaymentSubmit = async (event) => {
@@ -308,12 +424,14 @@ const OtherPaymentForm = ({ onSuccess, onError, processing, setProcessing, selec
 // Main Checkout Page
 const CheckoutPage = () => {
   const navigate = useNavigate();
-  const { cartItems, getSubtotal, getTotalItems, isRecurring, recurringFrequency } = useCart();
+  const { cartItems, getCartTotal, getTotalItems, isRecurring, recurringFrequency } = useCart();
   const [processing, setProcessing] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState(null);
   const [paymentMethod, setPaymentMethod] = useState('credit_debit');
   const [selectedCurrency, setSelectedCurrency] = useState('USD');
+  const [exchangeRates, setExchangeRates] = useState({});
+  const [loading, setLoading] = useState(true);
   
   // Prevent accessing checkout with empty cart
   useEffect(() => {
@@ -322,14 +440,108 @@ const CheckoutPage = () => {
     }
   }, [cartItems, navigate]);
   
+  // Fetch exchange rates
+  useEffect(() => {
+    const fetchExchangeRates = async () => {
+      setLoading(true);
+      
+      try {
+        // Attempt to fetch from backend API
+        let ratesData = {};
+        
+        try {
+          // Try to fetch from our backend first
+          const { data } = await axios.get('/api/donations/exchange-rates/refresh/');
+          
+          if (data.success && data.rates) {
+            // Convert API response to our format
+            data.rates.forEach(rate => {
+              ratesData[rate.target_currency] = rate.rate;
+            });
+            
+            console.log('Fetched exchange rates from backend:', ratesData);
+          } else {
+            throw new Error('Invalid response format from backend');
+          }
+        } catch (apiError) {
+          console.log('Could not fetch from backend, using fallback API:', apiError.message);
+          
+          // Fallback to a public API
+          const response = await axios.get('https://api.exchangerate-api.com/v4/latest/USD');
+          
+          if (response.data && response.data.rates) {
+            ratesData = response.data.rates;
+            console.log('Fetched exchange rates from public API:', ratesData);
+          }
+        }
+        
+        // If we still don't have rates, use defaults
+        if (Object.keys(ratesData).length === 0) {
+          console.log('Using default exchange rates');
+          ratesData = {
+            USD: 1.0,
+            EUR: 0.85,
+            GBP: 0.73,
+            JPY: 110.32,
+            CAD: 1.25,
+            AUD: 1.33
+          };
+        }
+        
+        setExchangeRates(ratesData);
+      } catch (error) {
+        console.error('Error fetching exchange rates:', error);
+        // Use fallback values if API call fails
+        setExchangeRates({
+          USD: 1.0,
+          EUR: 0.85,
+          GBP: 0.73,
+          JPY: 110.32,
+          CAD: 1.25,
+          AUD: 1.33
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchExchangeRates();
+  }, []);
+  
   const handleSuccess = (paymentIds) => {
+    // Collect projectIds and complete project data from cart items that are donations
+    const projectData = cartItems
+      .filter(item => item.type === 'donation' && item.projectId)
+      .map(item => ({
+        projectId: item.projectId,
+        amount: item.price * item.quantity,
+        name: item.name,
+        image: item.image,
+        description: item.description
+      }));
+    
+    console.log('Project data for payment success:', projectData);
+    
+    // If there are multiple projects, use the first one's ID for now
+    // In a real app, we would track all project donations separately
+    const firstProject = projectData.length > 0 ? projectData[0] : null;
+    const projectId = firstProject ? firstProject.projectId : null;
+    
     navigate('/payment-success', { 
       state: { 
         paymentIds, 
-        amount: getSubtotal(), 
+        amount: getCartTotal(), 
         currency: selectedCurrency,
         isRecurring,
-        recurringFrequency
+        recurringFrequency,
+        projectId,
+        projectData,
+        // Include project name and image directly for easier access
+        projectName: firstProject ? firstProject.name : null,
+        projectImage: firstProject ? firstProject.image : null,
+        // Include currency conversion details if applicable
+        originalAmountUsd: selectedCurrency !== 'USD' ? baseAmount : null,
+        exchangeRate: selectedCurrency !== 'USD' ? exchangeRates[selectedCurrency] : null
       } 
     });
   };
@@ -344,7 +556,15 @@ const CheckoutPage = () => {
   };
   
   // Calculate converted amount based on selected currency
-  const convertedAmount = getSubtotal() * (currencyRates[selectedCurrency] || 1);
+  const convertAmount = (amount, toCurrency) => {
+    if (!exchangeRates || !exchangeRates[toCurrency]) {
+      return amount; // Return original amount if rates aren't available
+    }
+    return amount * exchangeRates[toCurrency];
+  };
+  
+  const baseAmount = getCartTotal();
+  const convertedAmount = convertAmount(baseAmount, selectedCurrency);
   
   const renderPaymentForm = () => {
     const formProps = {
@@ -352,7 +572,8 @@ const CheckoutPage = () => {
       onError: handleError,
       processing,
       setProcessing,
-      selectedCurrency
+      selectedCurrency,
+      exchangeRates
     };
     
     switch (paymentMethod) {
@@ -407,7 +628,7 @@ const CheckoutPage = () => {
             <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
               <Typography>Subtotal:</Typography>
               <Typography>
-                ${getSubtotal().toFixed(2)}
+                ${getCartTotal().toFixed(2)}
               </Typography>
             </Box>
             
@@ -431,23 +652,20 @@ const CheckoutPage = () => {
               </Typography>
             )}
             
+            {/* Display conversion rate information if not USD */}
+            {selectedCurrency !== 'USD' && !loading && (
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 1, fontStyle: 'italic' }}>
+                1 USD = {exchangeRates[selectedCurrency]?.toFixed(4) || '—'} {selectedCurrency}
+              </Typography>
+            )}
+            
             <Box sx={{ mt: 3 }}>
-              <FormControl fullWidth size="small">
-                <InputLabel id="currency-select-label">Currency</InputLabel>
-                <Select
-                  labelId="currency-select-label"
-                  value={selectedCurrency}
-                  label="Currency"
-                  onChange={(e) => setSelectedCurrency(e.target.value)}
-                >
-                  <MenuItem value="USD">USD - US Dollar</MenuItem>
-                  <MenuItem value="EUR">EUR - Euro</MenuItem>
-                  <MenuItem value="GBP">GBP - British Pound</MenuItem>
-                  <MenuItem value="JPY">JPY - Japanese Yen</MenuItem>
-                  <MenuItem value="CAD">CAD - Canadian Dollar</MenuItem>
-                  <MenuItem value="AUD">AUD - Australian Dollar</MenuItem>
-                </Select>
-              </FormControl>
+              <CurrencySelector
+                selectedCurrency={selectedCurrency}
+                onChange={(e) => setSelectedCurrency(e.target.value)}
+                exchangeRates={exchangeRates}
+                loading={loading}
+              />
             </Box>
           </Paper>
           

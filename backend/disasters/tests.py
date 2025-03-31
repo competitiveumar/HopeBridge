@@ -30,7 +30,7 @@ class DisasterCategoryTests(TestCase):
         )
         
         # URLs
-        self.categories_url = reverse('disastercategory-list')
+        self.categories_url = reverse('disasters:disastercategory-list')
     
     def test_get_all_categories(self):
         """Test retrieving all disaster categories"""
@@ -40,7 +40,8 @@ class DisasterCategoryTests(TestCase):
     
     def test_get_category_detail(self):
         """Test retrieving a specific category by slug"""
-        response = self.client.get(reverse('disastercategory-detail', kwargs={'slug': self.category1.slug}))
+        url = reverse('disasters:disastercategory-detail', kwargs={'slug': self.category1.slug})
+        response = self.client.get(url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['name'], 'Earthquake')
 
@@ -96,7 +97,7 @@ class DisasterProjectTests(TestCase):
         )
         
         # URLs
-        self.projects_url = reverse('disasterproject-list')
+        self.projects_url = reverse('disasters:disasterproject-list')
     
     def test_get_all_projects(self):
         """Test retrieving all disaster projects"""
@@ -119,7 +120,7 @@ class DisasterProjectTests(TestCase):
     
     def test_get_project_detail(self):
         """Test retrieving a specific project by slug"""
-        response = self.client.get(reverse('disasterproject-detail', kwargs={'slug': self.project1.slug}))
+        response = self.client.get(reverse('disasters:disasterproject-detail', kwargs={'slug': self.project1.slug}))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['title'], 'Emergency Response Fund')
         self.assertEqual(response.data['progress_percentage'], 75)
@@ -160,8 +161,8 @@ class DisasterDonationTests(TestCase):
         )
         
         # URLs
-        self.donations_url = reverse('disasterdonation-list')
-        self.project_donate_url = f"/api/disasters/projects/{self.project.slug}/donate/"
+        self.donations_url = reverse('disasters:disasterdonation-list')
+        self.project_donate_url = reverse('disasters:disasterproject-donate', kwargs={'slug': self.project.slug})
         
         # Test donation data
         self.valid_donation_data = {
@@ -177,6 +178,8 @@ class DisasterDonationTests(TestCase):
         initial_funds = self.project.funds_raised
         
         response = self.client.post(self.project_donate_url, self.valid_donation_data, format='json')
+        print(f"Response status: {response.status_code}")
+        print(f"Response data: {response.data}")
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         
         # Refresh project from database
@@ -254,7 +257,7 @@ class EmergencyResourceTests(TestCase):
         )
         
         # URLs
-        self.resources_url = reverse('emergencyresource-list')
+        self.resources_url = reverse('disasters:emergencyresource-list')
     
     def test_get_all_resources(self):
         """Test retrieving all emergency resources"""
@@ -271,7 +274,7 @@ class EmergencyResourceTests(TestCase):
     
     def test_get_resource_detail(self):
         """Test retrieving a specific resource by slug"""
-        response = self.client.get(reverse('emergencyresource-detail', kwargs={'slug': self.resource1.slug}))
+        response = self.client.get(reverse('disasters:emergencyresource-detail', kwargs={'slug': self.resource1.slug}))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['title'], 'Earthquake Safety Tips')
         self.assertEqual(response.data['source'], 'Red Cross')

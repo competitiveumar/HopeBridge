@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Project, Donation, FundAllocation, CartItem, Payment
+from .models import Project, Donation, FundAllocation, CartItem, Payment, ExchangeRate
 
 class FundAllocationSerializer(serializers.ModelSerializer):
     class Meta:
@@ -133,4 +133,12 @@ class PaymentIntentSerializer(serializers.Serializer):
     recurring_frequency = serializers.CharField(max_length=20, required=False, allow_null=True, allow_blank=True)
     donation_id = serializers.IntegerField(required=False, allow_null=True)
     email = serializers.EmailField(required=False, allow_null=True, allow_blank=True)
-    name = serializers.CharField(max_length=100, required=False, allow_null=True, allow_blank=True) 
+    name = serializers.CharField(max_length=100, required=False, allow_null=True, allow_blank=True)
+    original_amount_usd = serializers.DecimalField(max_digits=10, decimal_places=2, required=False)
+    exchange_rate = serializers.DecimalField(max_digits=12, decimal_places=6, required=False)
+
+class ExchangeRateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ExchangeRate
+        fields = ['base_currency', 'target_currency', 'rate', 'last_updated']
+        read_only_fields = ['last_updated'] 

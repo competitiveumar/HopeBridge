@@ -1,11 +1,12 @@
-from django.test import TestCase
-from django.urls import reverse
+from django.test import TestCase, SimpleTestCase
+from django.urls import reverse, resolve
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 from rest_framework.test import APITestCase, APIClient
 from rest_framework import status
 import json
 from datetime import timedelta
+from django.apps import apps
 
 from .models import (
     EventCategory,
@@ -358,4 +359,19 @@ class WorkshopAndVolunteerTests(APITestCase):
         
         response = self.client.post(url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(VolunteerApplication.objects.filter(position=self.position, user=self.regular_user).count(), 1) 
+        self.assertEqual(VolunteerApplication.objects.filter(position=self.position, user=self.regular_user).count(), 1)
+
+
+class EventsConfigTest(SimpleTestCase):
+    """Tests for the events app configuration"""
+    
+    def test_app_config(self):
+        """Test events app is correctly configured"""
+        # Check if the app is installed
+        self.assertTrue(apps.is_installed('events'), 
+                      "Events app should be installed")
+        
+        # Check if the app config is correct
+        app_config = apps.get_app_config('events')
+        self.assertEqual(app_config.name, 'events')
+        self.assertEqual(app_config.verbose_name, 'Events') 

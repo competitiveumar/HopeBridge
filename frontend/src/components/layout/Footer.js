@@ -29,18 +29,32 @@ const Footer = () => {
     >
       <Container maxWidth="lg">
         <Grid container spacing={4}>
-          <Grid item xs={12} sm={4}>
+          <Grid item xs={12} sm={6} md={4}>
             <Box mb={3}>
-              <Logo showText={true} sx={{ justifyContent: 'flex-start' }} />
+              <Logo showText={true} sx={{ justifyContent: { xs: 'center', sm: 'flex-start' } }} />
             </Box>
-            <Typography variant="body2" color="text.secondary" paragraph>
+            <Typography 
+              variant="body2" 
+              color="text.secondary" 
+              paragraph
+              sx={{ textAlign: { xs: 'center', sm: 'left' } }}
+            >
               Connecting donors with those in need. Together, we can make a difference
               in the lives of people around the world.
             </Typography>
-            <Typography variant="h6" color="text.primary" gutterBottom>
+            <Typography 
+              variant="h6" 
+              color="text.primary" 
+              gutterBottom
+              sx={{ textAlign: { xs: 'center', sm: 'left' } }}
+            >
               Follow Us
             </Typography>
-            <Stack direction="row" spacing={1}>
+            <Stack 
+              direction="row" 
+              spacing={1}
+              sx={{ justifyContent: { xs: 'center', sm: 'flex-start' } }}
+            >
               <IconButton 
                 aria-label="facebook" 
                 component="a"
@@ -104,11 +118,20 @@ const Footer = () => {
             </Stack>
           </Grid>
           
-          <Grid item xs={12} sm={4}>
-            <Typography variant="h6" color="text.primary" gutterBottom>
+          <Grid item xs={12} sm={6} md={4}>
+            <Typography 
+              variant="h6" 
+              color="text.primary" 
+              gutterBottom
+              sx={{ textAlign: { xs: 'center', sm: 'left' }, mt: { xs: 3, sm: 0 } }}
+            >
               Quick Links
             </Typography>
-            <Box>
+            <Box sx={{ 
+              display: 'flex', 
+              flexDirection: 'column',
+              alignItems: { xs: 'center', sm: 'flex-start' }
+            }}>
               <Link component={RouterLink} to="/" color="inherit" display="block" sx={{ mb: 1 }}>
                 Home
               </Link>
@@ -139,11 +162,21 @@ const Footer = () => {
             </Box>
           </Grid>
           
-          <Grid item xs={12} sm={4}>
-            <Typography variant="h6" color="text.primary" gutterBottom>
+          <Grid item xs={12} sm={6} md={4}>
+            <Typography 
+              variant="h6" 
+              color="text.primary" 
+              gutterBottom
+              sx={{ textAlign: { xs: 'center', sm: 'left' }, mt: { xs: 3, sm: 0 } }}
+            >
               Contact Us
             </Typography>
-            <Typography variant="body2" color="text.secondary" paragraph>
+            <Typography 
+              variant="body2" 
+              color="text.secondary" 
+              paragraph
+              sx={{ textAlign: { xs: 'center', sm: 'left' } }}
+            >
               15 Charity Square
               <br />
               London, EC1V 9HD

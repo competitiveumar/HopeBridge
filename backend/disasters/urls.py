@@ -13,6 +13,8 @@ router.register(r'projects', DisasterProjectViewSet)
 router.register(r'donations', DisasterDonationViewSet)
 router.register(r'resources', EmergencyResourceViewSet)
 
+app_name = 'disasters'
+
 urlpatterns = [
     path('', include(router.urls)),
 ] 

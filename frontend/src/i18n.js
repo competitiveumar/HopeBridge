@@ -40,6 +40,8 @@ const resources = {
         close: 'Close',
         open: 'Open Accessibility Options',
         skipToContent: 'Skip to Main Content',
+        skipLink: 'Skip to main content',
+        selectLanguage: 'Select Language',
         reset: 'Reset Settings',
         increaseFontSize: 'Increase Font Size',
         decreaseFontSize: 'Decrease Font Size',
@@ -330,11 +332,31 @@ const resources = {
         close: 'Cerrar',
         open: 'Abrir Opciones de Accesibilidad',
         skipToContent: 'Saltar al Contenido Principal',
+        skipLink: 'Saltar al contenido principal',
         reset: 'Restablecer Configuración',
         increaseFontSize: 'Aumentar Tamaño de Fuente',
         decreaseFontSize: 'Disminuir Tamaño de Fuente',
         commandsAvailable: 'Comandos de Voz Disponibles',
-        commandsIntro: 'Di "ayuda" o "qué puedo decir" para ver la lista de comandos'
+        commandsIntro: 'Diga "ayuda" o "qué puedo decir" para ver la lista de comandos'
+      },
+      
+      // Voice commands
+      voice: {
+        commands: {
+          available: 'Comandos Disponibles',
+          help: 'Ayuda',
+          whatCanISay: '¿Qué puedo decir?',
+          goToHome: 'ir a inicio',
+          enableHighContrast: 'activar alto contraste',
+          increaseTextSize: 'aumentar tamaño del texto',
+          switchToSpanish: 'cambiar a español'
+        }
+      },
+
+      // Focus announcements
+      focus: {
+        language: 'Idioma',
+        selected: 'seleccionado'
       },
       
       // Footer
@@ -522,6 +544,7 @@ i18n
   .use(initReactI18next) // Pass i18n to react-i18next
   .init({
     resources,
+    lng: 'en', // Make sure English is the default language
     fallbackLng: 'en',
     debug: process.env.NODE_ENV === 'development',
     

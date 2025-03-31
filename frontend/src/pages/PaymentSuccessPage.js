@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Container,
@@ -12,18 +12,94 @@ import {
 } from '@mui/material';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import { format } from 'date-fns';
+import { useDonation } from '../contexts/DonationContext';
 
 const PaymentSuccessPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const paymentInfo = location.state || {};
+  const { addSuccessfulDonation } = useDonation();
+  const donationProcessed = useRef(false);
   
   // Redirect to home page if page is accessed directly without payment info
   useEffect(() => {
     if (!paymentInfo.paymentIds) {
       navigate('/');
+      return;
     }
-  }, [navigate, paymentInfo]);
+    
+    // Only process the donation once to prevent infinite loop
+    if (!donationProcessed.current && paymentInfo.projectId && paymentInfo.amount) {
+      console.log('Processing donation for project:', paymentInfo.projectId, 'Amount:', paymentInfo.amount);
+      console.log('Full payment info:', paymentInfo);
+      donationProcessed.current = true;
+      
+      // Get project details directly from the navigation state if available
+      const projectName = paymentInfo.projectName || null;
+      const projectImage = paymentInfo.projectImage || null;
+      
+      console.log('Project details from navigation state:', {
+        name: projectName,
+        image: projectImage,
+        projectId: paymentInfo.projectId
+      });
+      
+      // Fallback: Try to get detailed project info from cartItems if not in navigation state
+      let finalProjectName = projectName;
+      let finalProjectImage = projectImage;
+      
+      if ((!finalProjectName || !finalProjectImage) && paymentInfo.projectData && paymentInfo.projectData.length > 0) {
+        console.log('Looking up project details from projectData:', paymentInfo.projectData);
+        
+        // First try to get data directly from projectData
+        const projectDataItem = paymentInfo.projectData.find(item => item.projectId === paymentInfo.projectId);
+        if (projectDataItem) {
+          finalProjectName = finalProjectName || projectDataItem.name;
+          finalProjectImage = finalProjectImage || projectDataItem.image;
+          console.log('Found project details in projectData:', { name: finalProjectName, image: finalProjectImage });
+        }
+        
+        // Fallback to cart items if still not found
+        if (!finalProjectName || !finalProjectImage) {
+          const cartItem = JSON.parse(localStorage.getItem('cartItems') || '[]')
+            .find(item => item.projectId === paymentInfo.projectId);
+          
+          if (cartItem) {
+            finalProjectName = finalProjectName || cartItem.name;
+            finalProjectImage = finalProjectImage || cartItem.image;
+            console.log('Found project details from cart:', { name: finalProjectName, image: finalProjectImage });
+          }
+        }
+      }
+      
+      // Create a unique donation record
+      const donationRecord = {
+        projectId: paymentInfo.projectId,
+        amount: paymentInfo.amount,
+        timestamp: new Date().toISOString(),
+        paymentId: paymentInfo.paymentIds[0],
+        currency: paymentInfo.currency || 'USD',
+        isRecurring: paymentInfo.isRecurring || false,
+        recurringFrequency: paymentInfo.recurringFrequency || null,
+        name: finalProjectName, // Include project name in the donation record
+        image: finalProjectImage,  // Include project image in the donation record
+        // Add currency conversion information if applicable
+        originalAmountUsd: paymentInfo.originalAmountUsd,
+        exchangeRate: paymentInfo.exchangeRate
+      };
+      
+      console.log('Adding donation record to context:', donationRecord);
+      
+      // Log the donation to ensure it's processed
+      addSuccessfulDonation(donationRecord);
+      
+      // Store the fact that this payment was processed in localStorage
+      // This prevents duplicates if user refreshes the success page
+      const processedPayments = JSON.parse(localStorage.getItem('processedPayments') || '[]');
+      processedPayments.push(paymentInfo.paymentIds[0]);
+      localStorage.setItem('processedPayments', JSON.stringify(processedPayments));
+    }
+  }, [navigate, paymentInfo, addSuccessfulDonation]);
   
   if (!paymentInfo.paymentIds) {
     return null;
@@ -103,6 +179,33 @@ const PaymentSuccessPage = () => {
               })}
             </Typography>
           </Grid>
+          
+          {/* Display original USD amount if currency conversion was applied */}
+          {paymentInfo.originalAmountUsd && paymentInfo.currency !== 'USD' && (
+            <Grid item xs={12} sm={6}>
+              <Typography variant="body2" color="text.secondary">
+                Recipient Receives
+              </Typography>
+              <Typography variant="body1" gutterBottom>
+                {paymentInfo.originalAmountUsd?.toLocaleString('en-US', { 
+                  style: 'currency', 
+                  currency: 'USD' 
+                })}
+              </Typography>
+            </Grid>
+          )}
+          
+          {/* Display exchange rate if available */}
+          {paymentInfo.exchangeRate && paymentInfo.currency !== 'USD' && (
+            <Grid item xs={12} sm={6}>
+              <Typography variant="body2" color="text.secondary">
+                Exchange Rate
+              </Typography>
+              <Typography variant="body1" gutterBottom>
+                1 USD = {paymentInfo.exchangeRate.toFixed(4)} {paymentInfo.currency}
+              </Typography>
+            </Grid>
+          )}
           
           {paymentInfo.isRecurring && (
             <Grid item xs={12}>

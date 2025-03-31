@@ -11,4 +11,6 @@ app_name = 'gift_cards'
 
 urlpatterns = [
     path('', include(router.urls)),
+    path('cards/validate/', GiftCardViewSet.as_view({'post': 'validate_code'}), name='gift-card-validate'),
+    path('cards/user/', GiftCardViewSet.as_view({'get': 'user_gift_cards'}), name='gift-card-user'),
 ] 

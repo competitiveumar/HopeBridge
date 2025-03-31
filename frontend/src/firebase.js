@@ -1,7 +1,7 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getStorage } from 'firebase/storage';
-import { getAnalytics } from 'firebase/analytics';
+import { getAnalytics, isSupported } from 'firebase/analytics';
 
 // Define the Firebase configuration directly (no env variables)
 const firebaseConfig = {
@@ -30,11 +30,33 @@ export const auth = getAuth(app);
 export const storage = getStorage(app);
 
 // Only initialize analytics if we're in a browser environment with the function available
+// and we're not in development mode (to prevent extension conflicts)
 let analytics = null;
-try {
-  analytics = getAnalytics(app);
-} catch (error) {
-  console.log("Analytics not initialized:", error.message);
-}
+
+const initializeAnalytics = async () => {
+  try {
+    // Only use analytics in production to avoid extension conflicts
+    if (process.env.NODE_ENV === 'production') {
+      // Check if analytics is supported first
+      const analyticsSupported = await isSupported();
+      if (analyticsSupported) {
+        analytics = getAnalytics(app);
+        console.log("Firebase Analytics initialized");
+      } else {
+        console.log("Firebase Analytics not supported in this environment");
+      }
+    } else {
+      console.log("Firebase Analytics disabled in development mode");
+    }
+  } catch (error) {
+    console.log("Analytics initialization error:", error.message);
+    // Don't throw the error further - just log it
+  }
+};
+
+// Initialize analytics asynchronously to avoid blocking
+initializeAnalytics().catch(err => {
+  console.warn("Failed to initialize Firebase Analytics:", err);
+});
 
 export { analytics }; 

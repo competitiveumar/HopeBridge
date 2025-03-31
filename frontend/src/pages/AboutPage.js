@@ -375,7 +375,7 @@ const AboutPage = () => {
             Our Journey
           </Typography>
           <Typography variant="body1" align="center" paragraph sx={{ mb: 6 }}>
-            Key milestones in our mission to transform global giving
+            Key milestones in our mission to transform HopeBridge
           </Typography>
           <Grid container spacing={4}>
             <Grid item xs={12} md={4}>

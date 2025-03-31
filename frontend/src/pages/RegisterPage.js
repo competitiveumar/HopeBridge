@@ -25,6 +25,10 @@ import GoogleIcon from '@mui/icons-material/Google';
 import FacebookIcon from '@mui/icons-material/Facebook';
 import { useAuth } from '../contexts/AuthContext';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
+import FavoriteIcon from '@mui/icons-material/Favorite';
+import VolunteerActivismIcon from '@mui/icons-material/VolunteerActivism';
+import { signInWithGoogle, signInWithFacebook } from '../config/firebase';
+import { socialAuth } from '../services/authService';
 
 const RegisterPage = () => {
   const theme = useTheme();
@@ -186,9 +190,61 @@ const RegisterPage = () => {
     }
   };
 
-  const handleSocialLogin = (provider) => {
-    // In a real app, this would handle social login/registration
-    console.log(`Registering with ${provider}`);
+  const handleSocialLogin = async (provider) => {
+    setLoading(true);
+    setRegisterError('');
+    
+    try {
+      let result;
+      
+      if (provider === 'Google') {
+        result = await signInWithGoogle();
+      } else if (provider === 'Facebook') {
+        result = await signInWithFacebook();
+      } else {
+        throw new Error(`Unsupported provider: ${provider}`);
+      }
+      
+      if (result && result.success) {
+        // Extract user data
+        const userData = result.user;
+        console.log(`${provider} signup successful:`, userData);
+        
+        // Get the provider ID (google.com -> google)
+        let providerName = provider.toLowerCase();
+        if (userData.providerData && userData.providerData.length > 0) {
+          const providerId = userData.providerData[0].providerId || '';
+          providerName = providerId.replace('.com', '');
+        }
+        
+        // Get token
+        const token = result.token || userData.accessToken || userData.stsTokenManager?.accessToken;
+        
+        if (!token) {
+          throw new Error('No access token available from authentication provider');
+        }
+        
+        // Send to backend
+        await socialAuth(providerName, token, userData);
+        
+        // Navigate to dashboard
+        navigate('/dashboard');
+      } else if (result) {
+        throw new Error(result.error || `${provider} registration failed`);
+      }
+    } catch (error) {
+      console.error(`${provider} registration error:`, error);
+      
+      if (error.code === 'auth/account-exists-with-different-credential') {
+        setRegisterError('An account already exists with the same email address but different sign-in credentials. Try signing in a different way.');
+      } else if (error.code === 'auth/popup-closed-by-user') {
+        setRegisterError('Sign-up was cancelled. Please try again.');
+      } else {
+        setRegisterError(error.message || `An error occurred during ${provider} registration. Please try again.`);
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -200,14 +256,33 @@ const RegisterPage = () => {
           sm={4}
           md={7}
           sx={{
-            backgroundImage: 'url("https://images.unsplash.com/photo-1532629345422-7515f3d16bb6?q=80&w=1470&auto=format&fit=crop")',
+            backgroundImage: 'linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.4)), url("https://images.unsplash.com/photo-1532629345422-7515f3d16bb6?q=80&w=1470&auto=format&fit=crop")',
             backgroundRepeat: 'no-repeat',
             backgroundColor: (t) => t.palette.grey[50],
             backgroundSize: 'cover',
             backgroundPosition: 'center',
             display: { xs: 'none', sm: 'block' },
+            position: 'relative',
           }}
-        />
+        >
+          <Box
+            sx={{
+              position: 'absolute',
+              bottom: 40,
+              left: 40,
+              color: 'white',
+              zIndex: 1,
+              maxWidth: '80%'
+            }}
+          >
+            <Typography variant="h3" component="h1" gutterBottom fontWeight="bold">
+              Join Our Community
+            </Typography>
+            <Typography variant="h6">
+              Whether you want to donate or volunteer, your contribution can make a meaningful difference.
+            </Typography>
+          </Box>
+        </Grid>
       )}
       <Grid 
         item 
@@ -221,279 +296,180 @@ const RegisterPage = () => {
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'center',
+          bgcolor: theme.palette.background.default
         }}
       >
         <Box
           sx={{
-            my: { xs: 4, md: 8 },
+            my: { xs: 4, md: 6 },
             mx: { xs: 2, sm: 4 },
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
-            p: { xs: 2, sm: 3 }
+            p: { xs: 3, sm: 4 },
+            backgroundColor: 'white',
+            borderRadius: 2,
+            boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
           }}
         >
-          <Avatar sx={{ m: 1, bgcolor: 'secondary.main', width: { xs: 40, sm: 56 }, height: { xs: 40, sm: 56 } }}>
-            <PersonAddIcon sx={{ fontSize: { xs: 20, sm: 30 } }} />
+          <Avatar sx={{ 
+            mb: 2, 
+            bgcolor: 'secondary.main', 
+            width: { xs: 60, sm: 80 }, 
+            height: { xs: 60, sm: 80 },
+            boxShadow: '0 4px 14px rgba(0,0,0,0.15)'
+          }}>
+            <PersonAddIcon sx={{ fontSize: { xs: 30, sm: 40 } }} />
           </Avatar>
-          <Typography component="h1" variant="h5" sx={{ fontSize: { xs: '1.5rem', sm: '2rem' } }}>
-            Create an Account
+          <Typography component="h1" variant="h3" sx={{ 
+            fontSize: { xs: '2rem', sm: '2.5rem' },
+            fontWeight: 'bold',
+            mb: 1,
+            textAlign: 'center'
+          }}>
+            Join HopeBridge Today
           </Typography>
-          <Box 
-            component="form" 
-            noValidate 
-            onSubmit={handleSubmit} 
-            sx={{ 
-              mt: 3,
-              width: '100%',
-              maxWidth: '500px', 
-              transition: 'all 0.3s ease'
-            }}
-          >
-            <Grid container spacing={2}>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  autoComplete="given-name"
-                  name="firstName"
-                  required
-                  fullWidth
-                  id="firstName"
-                  label="First Name"
-                  autoFocus={!isMobile}
-                  value={formData.firstName}
-                  onChange={handleInputChange}
-                  error={!!errors.firstName}
-                  helperText={errors.firstName}
-                  sx={{
-                    '& .MuiInputBase-root': {
-                      height: { xs: '50px', sm: '56px' },
-                      transition: 'all 0.3s ease',
-                    }
-                  }}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  required
-                  fullWidth
-                  id="lastName"
-                  label="Last Name"
-                  name="lastName"
-                  autoComplete="family-name"
-                  value={formData.lastName}
-                  onChange={handleInputChange}
-                  error={!!errors.lastName}
-                  helperText={errors.lastName}
-                  sx={{
-                    '& .MuiInputBase-root': {
-                      height: { xs: '50px', sm: '56px' },
-                      transition: 'all 0.3s ease',
-                    }
-                  }}
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  required
-                  fullWidth
-                  id="email"
-                  label="Email Address"
-                  name="email"
-                  autoComplete="email"
-                  value={formData.email}
-                  onChange={handleInputChange}
-                  error={!!errors.email}
-                  helperText={errors.email}
-                  sx={{
-                    '& .MuiInputBase-root': {
-                      height: { xs: '50px', sm: '56px' },
-                      transition: 'all 0.3s ease',
-                    }
-                  }}
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  required
-                  fullWidth
-                  name="password"
-                  label="Password"
-                  type={showPassword ? 'text' : 'password'}
-                  id="password"
-                  autoComplete="new-password"
-                  value={formData.password}
-                  onChange={handleInputChange}
-                  error={!!errors.password}
-                  helperText={errors.password}
-                  sx={{
-                    '& .MuiInputBase-root': {
-                      height: { xs: '50px', sm: '56px' },
-                      transition: 'all 0.3s ease',
-                    }
-                  }}
-                  InputProps={{
-                    endAdornment: (
-                      <InputAdornment position="end">
-                        <IconButton
-                          aria-label="toggle password visibility"
-                          onClick={handleClickShowPassword}
-                          edge="end"
-                          size={isMobile ? "small" : "medium"}
-                        >
-                          {showPassword ? <VisibilityOff /> : <Visibility />}
-                        </IconButton>
-                      </InputAdornment>
-                    ),
-                  }}
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  required
-                  fullWidth
-                  name="confirmPassword"
-                  label="Confirm Password"
-                  type={showConfirmPassword ? 'text' : 'password'}
-                  id="confirmPassword"
-                  autoComplete="new-password"
-                  value={formData.confirmPassword}
-                  onChange={handleInputChange}
-                  error={!!errors.confirmPassword}
-                  helperText={errors.confirmPassword}
-                  sx={{
-                    '& .MuiInputBase-root': {
-                      height: { xs: '50px', sm: '56px' },
-                      transition: 'all 0.3s ease',
-                    }
-                  }}
-                  InputProps={{
-                    endAdornment: (
-                      <InputAdornment position="end">
-                        <IconButton
-                          aria-label="toggle confirm password visibility"
-                          onClick={handleClickShowConfirmPassword}
-                          edge="end"
-                          size={isMobile ? "small" : "medium"}
-                        >
-                          {showConfirmPassword ? <VisibilityOff /> : <Visibility />}
-                        </IconButton>
-                      </InputAdornment>
-                    ),
-                  }}
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      name="agreeToTerms"
-                      color="primary"
-                      checked={formData.agreeToTerms}
-                      onChange={handleInputChange}
-                      size={isMobile ? "small" : "medium"}
-                    />
-                  }
-                  label={
-                    <Typography variant="body2" sx={{ fontSize: { xs: '0.8rem', sm: '0.875rem' } }}>
-                      I agree to the{' '}
-                      <Link component={RouterLink} to="/terms">
-                        Terms of Service
-                      </Link>{' '}
-                      and{' '}
-                      <Link component={RouterLink} to="/privacy">
-                        Privacy Policy
-                      </Link>
-                    </Typography>
-                  }
-                />
-                {errors.agreeToTerms && (
-                  <Typography variant="caption" color="error">
-                    {errors.agreeToTerms}
-                  </Typography>
-                )}
-              </Grid>
-            </Grid>
-            {registerError && (
-              <Alert severity="error" sx={{ mt: 2 }}>
-                {registerError}
-              </Alert>
-            )}
-            <Button
-              type="submit"
-              fullWidth
-              variant="contained"
-              sx={{ 
-                mt: 3, 
-                mb: 2,
-                height: { xs: '44px', sm: '50px' },
-                fontSize: { xs: '0.875rem', sm: '1rem' },
-                transition: 'all 0.3s ease',
-                opacity: formValid ? 1 : 0.7,
-              }}
-              disabled={!formValid || loading}
-            >
-              {loading ? <CircularProgress size={24} color="inherit" /> : "Sign Up"}
-            </Button>
-            <Grid container justifyContent="flex-end">
-              <Grid item>
-                <Link 
-                  component={RouterLink} 
-                  to="/login" 
-                  variant="body2"
-                  sx={{ fontSize: { xs: '0.8rem', sm: '0.875rem' } }}
-                >
-                  Already have an account? Sign in
-                </Link>
-              </Grid>
-            </Grid>
-            <Box sx={{ 
-              mt: { xs: 3, sm: 4 }, 
-              textAlign: 'center' 
-            }}>
-              <Typography 
-                variant="body2" 
-                color="text.secondary" 
+          
+          <Typography variant="body1" sx={{ 
+            mt: 2, 
+            mb: 4, 
+            textAlign: 'center',
+            maxWidth: '80%',
+            color: 'text.secondary'
+          }}>
+            Please select how you would like to contribute to our community:
+          </Typography>
+          
+          <Grid container spacing={3}>
+            <Grid item xs={12} sm={6}>
+              <Button
+                fullWidth
+                variant="contained"
+                color="primary"
+                size="large"
+                component={RouterLink}
+                to="/register-donor"
+                startIcon={<FavoriteIcon />}
                 sx={{ 
-                  mb: { xs: 1.5, sm: 2 },
-                  fontSize: { xs: '0.8rem', sm: '0.875rem' }
+                  py: 2.5,
+                  borderRadius: 2,
+                  fontSize: '1.1rem',
+                  fontWeight: 'bold',
+                  boxShadow: '0 4px 10px rgba(25, 118, 210, 0.3)',
+                  transition: 'all 0.3s ease',
+                  '&:hover': {
+                    transform: 'translateY(-3px)',
+                    boxShadow: '0 6px 15px rgba(25, 118, 210, 0.4)',
+                  }
                 }}
               >
-                Or register with
-              </Typography>
-              <Box 
+                Join as Donor
+              </Button>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <Button
+                fullWidth
+                variant="contained"
+                color="secondary"
+                size="large"
+                component={RouterLink}
+                to="/register-volunteer"
+                startIcon={<VolunteerActivismIcon />}
                 sx={{ 
-                  display: 'flex', 
-                  flexDirection: isMobile ? 'column' : 'row',
-                  justifyContent: 'center',
-                  gap: { xs: 1, sm: 2 }
+                  py: 2.5,
+                  borderRadius: 2,
+                  fontSize: '1.1rem',
+                  fontWeight: 'bold',
+                  boxShadow: '0 4px 10px rgba(156, 39, 176, 0.3)',
+                  transition: 'all 0.3s ease',
+                  '&:hover': {
+                    transform: 'translateY(-3px)',
+                    boxShadow: '0 6px 15px rgba(156, 39, 176, 0.4)',
+                  }
                 }}
               >
-                <Button
-                  variant="outlined"
-                  startIcon={<GoogleIcon />}
-                  onClick={() => handleSocialLogin('google')}
-                  fullWidth={isMobile}
-                  size={isMobile ? "small" : "medium"}
-                  sx={{ 
-                    mb: isMobile ? 1 : 0,
-                    transition: 'all 0.3s ease' 
-                  }}
-                >
-                  Google
-                </Button>
-                <Button
-                  variant="outlined"
-                  startIcon={<FacebookIcon />}
-                  onClick={() => handleSocialLogin('facebook')}
-                  fullWidth={isMobile}
-                  size={isMobile ? "small" : "medium"}
-                  sx={{ transition: 'all 0.3s ease' }}
-                >
-                  Facebook
-                </Button>
-              </Box>
-            </Box>
+                Join as Volunteer
+              </Button>
+            </Grid>
+          </Grid>
+          
+          <Divider sx={{ width: '100%', my: 4 }}>
+            <Typography variant="body2" color="text.secondary" sx={{ px: 2, fontWeight: 'medium' }}>
+              OR CONTINUE WITH
+            </Typography>
+          </Divider>
+          
+          <Grid container spacing={2}>
+            <Grid item xs={12} sm={6}>
+              <Button
+                fullWidth
+                variant="outlined"
+                startIcon={<GoogleIcon />}
+                onClick={() => handleSocialLogin('Google')}
+                sx={{ 
+                  borderRadius: '8px', 
+                  py: 1.5,
+                  borderWidth: '1.5px',
+                  transition: 'all 0.2s',
+                  '&:hover': {
+                    backgroundColor: 'rgba(66, 133, 244, 0.04)',
+                    borderColor: '#4285F4',
+                  }
+                }}
+              >
+                Google
+              </Button>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <Button
+                fullWidth
+                variant="outlined"
+                startIcon={<FacebookIcon />}
+                onClick={() => handleSocialLogin('Facebook')}
+                sx={{ 
+                  borderRadius: '8px', 
+                  py: 1.5,
+                  borderWidth: '1.5px',
+                  transition: 'all 0.2s',
+                  '&:hover': {
+                    backgroundColor: 'rgba(59, 89, 152, 0.04)',
+                    borderColor: '#3b5998',
+                  }
+                }}
+              >
+                Facebook
+              </Button>
+            </Grid>
+          </Grid>
+          
+          <Box mt={4} textAlign="center">
+            <Typography variant="body1" sx={{ fontWeight: 'medium' }}>
+              Already have an account?{' '}
+              <Link 
+                component={RouterLink} 
+                to="/login" 
+                sx={{ 
+                  fontWeight: 'bold',
+                  '&:hover': {
+                    textDecoration: 'none',
+                  }
+                }}
+              >
+                Sign in
+              </Link>
+            </Typography>
           </Box>
+          
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 5, textAlign: 'center' }}>
+            By signing up, you agree to our{' '}
+            <Link component={RouterLink} to="/terms">
+              Terms of Service
+            </Link>{' '}
+            and{' '}
+            <Link component={RouterLink} to="/privacy-policy">
+              Privacy Policy
+            </Link>
+          </Typography>
         </Box>
       </Grid>
     </Grid>

@@ -58,7 +58,7 @@ const getOrCreateSessionId = () => {
 // Development mode checkout form without Stripe dependencies
 const CheckoutForm = ({ onSuccess, onError, processing, setProcessing }) => {
   const { currentUser } = useAuth();
-  const { clearCart, getSubtotal } = useCart();
+  const { clearCart, getCartTotal } = useCart();
   const [error, setError] = useState(null);
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
@@ -178,7 +178,7 @@ const CheckoutForm = ({ onSuccess, onError, processing, setProcessing }) => {
         {processing ? (
           <CircularProgress size={24} color="inherit" />
         ) : (
-          `Pay ${getSubtotal().toLocaleString('en-US', { style: 'currency', currency: 'USD' })}`
+          `Pay ${getCartTotal().toLocaleString('en-US', { style: 'currency', currency: 'USD' })}`
         )}
       </Button>
     </form>
@@ -265,7 +265,7 @@ const CartPage = () => {
     cartItems, 
     removeFromCart, 
     updateQuantity, 
-    getSubtotal, 
+    getCartTotal, 
     getTotalItems,
     isRecurring,
     recurringFrequency,
@@ -495,7 +495,7 @@ const CartPage = () => {
               <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                 <Typography>Subtotal:</Typography>
                 <Typography>
-                  ${(getSubtotal() || 0).toFixed(2)}
+                  ${(getCartTotal() || 0).toFixed(2)}
                 </Typography>
               </Box>
               
@@ -508,7 +508,7 @@ const CartPage = () => {
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                   <Typography>Gift Card:</Typography>
                   <Typography color="error">
-                    -${Math.min(giftCard.amount || 0, getSubtotal() || 0).toFixed(2)}
+                    -${Math.min(giftCard.amount || 0, getCartTotal() || 0).toFixed(2)}
                   </Typography>
                 </Box>
               )}
@@ -518,7 +518,7 @@ const CartPage = () => {
               <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                 <Typography variant="h6">Total:</Typography>
                 <Typography variant="h6">
-                  ${Math.max(0, (getSubtotal() || 0) - ((giftCard?.amount || 0))).toFixed(2)}
+                  ${Math.max(0, (getCartTotal() || 0) - ((giftCard?.amount || 0))).toFixed(2)}
                 </Typography>
               </Box>
               

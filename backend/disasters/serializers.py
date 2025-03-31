@@ -51,7 +51,24 @@ class DisasterDonationSerializer(serializers.ModelSerializer):
         extra_kwargs = {
             'donor_name': {'write_only': True},
             'donor_email': {'write_only': True},
+            'project': {'required': False},
         }
+    
+    def validate(self, data):
+        # If donation is anonymous, donor_name and donor_email can be optional
+        if data.get('anonymous', False):
+            if 'donor_name' not in data:
+                data['donor_name'] = 'Anonymous'
+            if 'donor_email' not in data:
+                data['donor_email'] = 'anonymous@example.com'
+        else:
+            # For non-anonymous donations, these fields are required
+            if 'donor_name' not in data:
+                raise serializers.ValidationError({'donor_name': 'This field is required for non-anonymous donations.'})
+            if 'donor_email' not in data:
+                raise serializers.ValidationError({'donor_email': 'This field is required for non-anonymous donations.'})
+        
+        return data
     
     def create(self, validated_data):
         # Update the project's funds_raised field

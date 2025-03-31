@@ -25,6 +25,7 @@ import {
 import axios from 'axios';
 // import { loadStripe } from '@stripe/stripe-js';
 import { useCart } from '../contexts/CartContext';
+import { useDonation } from '../contexts/DonationContext';
 
 // Remove the Stripe initialization that's causing errors
 // const stripePromise = loadStripe(process.env.REACT_APP_STRIPE_PUBLIC_KEY || 'pk_test_placeholder');
@@ -32,154 +33,21 @@ import { useCart } from '../contexts/CartContext';
 const DonationsPage = () => {
   const navigate = useNavigate();
   const { addToCart, cartItems, updateQuantity, removeFromCart, addOrUpdateDonation } = useCart();
+  const { getUpdatedProjectTotal } = useDonation();
   const [category, setCategory] = useState('All');
   const [location, setLocation] = useState('All');
   const [status, setStatus] = useState('All');
   const [sortBy, setSortBy] = useState('Most Relevant');
   const [projects, setProjects] = useState([]);
+  const [currentProjects, setCurrentProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [donationAmounts, setDonationAmounts] = useState({});
   const [successMessage, setSuccessMessage] = useState(null);
   const [page, setPage] = useState(1);
   const [projectsPerPage, setProjectsPerPage] = useState(6);
-
-  useEffect(() => {
-    fetchProjects();
-  }, [category, location, status, sortBy]);
-
-  // Pre-fill donation amounts from cart when component mounts
-  useEffect(() => {
-    if (projects.length > 0 && cartItems.length > 0) {
-      const newDonationAmounts = { ...donationAmounts };
-      
-      // Check for donation items in cart
-      cartItems.forEach(item => {
-        if (item.type === 'donation') {
-          // Find matching project
-          const project = projects.find(p => p.title === item.name);
-          if (project) {
-            // Pre-fill the donation amount
-            newDonationAmounts[project.id] = item.price.toString();
-          }
-        }
-      });
-      
-      setDonationAmounts(newDonationAmounts);
-    }
-  }, [projects, cartItems, donationAmounts]);
-
-  const fetchProjects = async () => {
-    try {
-      setLoading(true);
-      // Use the allProjects array instead of mockProjects
-      setTimeout(() => {
-        setProjects(allProjects);
-        
-        // Initialize donation amounts
-        const amounts = {};
-        allProjects.forEach(project => {
-          amounts[project.id] = '';
-        });
-        setDonationAmounts(amounts);
-        
-        setLoading(false);
-      }, 1000);
-    } catch (err) {
-      setError('Failed to load projects. Please try again later.');
-      console.error('Error fetching projects:', err);
-      setLoading(false);
-    }
-  };
-
-  const handleDonationAmountChange = (projectId, value) => {
-    // Remove any non-numeric characters except decimal point
-    const sanitizedValue = value.replace(/[^0-9.]/g, '');
-    
-    // Ensure only one decimal point
-    const decimalCount = (sanitizedValue.match(/\./g) || []).length;
-    if (decimalCount > 1) return;
-    
-    // Ensure only 2 decimal places
-    const parts = sanitizedValue.split('.');
-    if (parts[1] && parts[1].length > 2) return;
-    
-    setDonationAmounts(prev => ({
-      ...prev,
-      [projectId]: sanitizedValue
-    }));
-  };
-
-  const handleDonate = async (projectId) => {
-    try {
-      const amount = donationAmounts[projectId];
-      
-      // Validate amount
-      if (!amount || isNaN(amount)) {
-        setSuccessMessage('Please enter a valid donation amount');
-        return;
-      }
-      
-      const numericAmount = parseFloat(amount);
-      if (numericAmount <= 0) {
-        setSuccessMessage('Donation amount must be greater than 0');
-        return;
-      }
-      
-      if (numericAmount > 1000000) {
-        setSuccessMessage('Donation amount cannot exceed £1,000,000');
-        return;
-      }
-
-      const project = allProjects.find(p => p.id === projectId);
-      if (!project) {
-        setSuccessMessage('Project not found');
-        return;
-      }
-      
-      // Format amount to 2 decimal places
-      const formattedAmount = numericAmount.toFixed(2);
-      
-      // Create donation item with complete project details
-      const donationItem = {
-        id: `donation-${projectId}-${Date.now()}`,
-        type: 'donation',
-        name: project.title,
-        description: project.description,
-        amount: parseFloat(formattedAmount),
-        price: parseFloat(formattedAmount),
-        quantity: 1,
-        currency: 'GBP',
-        projectId: project.id,
-        image: project.image,
-        category: project.category,
-        organization: project.organization || 'HopeBridge'
-      };
-
-      // Add or update the donation in the cart
-      const result = addOrUpdateDonation(donationItem);
-      
-      // Set appropriate success message
-      if (result === 'updated') {
-        setSuccessMessage(`Donation updated to £${formattedAmount}`);
-      } else {
-        setSuccessMessage(`£${formattedAmount} donation added to cart`);
-      }
-      
-      // Clear the donation amount for this project
-      setDonationAmounts(prev => ({
-        ...prev,
-        [projectId]: ''
-      }));
-      
-      // Navigate to cart page
-      navigate('/cart');
-    } catch (err) {
-      console.error('Error processing donation:', err);
-      setSuccessMessage('Failed to process donation. Please try again.');
-    }
-  };
-
+  
+  // Hardcoded projects data
   const allProjects = [
     {
       id: 1,
@@ -333,15 +201,156 @@ const DonationsPage = () => {
     }
   ];
 
+  useEffect(() => {
+    fetchProjects();
+  }, [category, location, status, sortBy]);
+
+  // Pre-fill donation amounts from cart when component mounts
+  useEffect(() => {
+    if (projects.length > 0 && cartItems.length > 0) {
+      const newDonationAmounts = { ...donationAmounts };
+      
+      // Check for donation items in cart
+      cartItems.forEach(item => {
+        if (item.type === 'donation') {
+          // Find matching project
+          const project = projects.find(p => p.title === item.name);
+          if (project) {
+            // Pre-fill the donation amount
+            newDonationAmounts[project.id] = item.price.toString();
+          }
+        }
+      });
+      
+      setDonationAmounts(newDonationAmounts);
+    }
+  }, [projects, cartItems, donationAmounts]);
+
+  const fetchProjects = async () => {
+    try {
+      setLoading(true);
+      // Use the allProjects array instead of mockProjects
+      setTimeout(() => {
+        setProjects(allProjects);
+        
+        // Initialize donation amounts
+        const amounts = {};
+        allProjects.forEach(project => {
+          amounts[project.id] = '';
+        });
+        setDonationAmounts(amounts);
+        
+        setLoading(false);
+      }, 1000);
+    } catch (err) {
+      setError('Failed to load projects. Please try again later.');
+      console.error('Error fetching projects:', err);
+      setLoading(false);
+    }
+  };
+
+  const handleDonationAmountChange = (projectId, value) => {
+    // Remove any non-numeric characters except decimal point
+    const sanitizedValue = value.replace(/[^0-9.]/g, '');
+    
+    // Ensure only one decimal point
+    const decimalCount = (sanitizedValue.match(/\./g) || []).length;
+    if (decimalCount > 1) return;
+    
+    // Ensure only 2 decimal places
+    const parts = sanitizedValue.split('.');
+    if (parts[1] && parts[1].length > 2) return;
+    
+    setDonationAmounts(prev => ({
+      ...prev,
+      [projectId]: sanitizedValue
+    }));
+  };
+
+  const handleDonate = async (projectId) => {
+    try {
+      const amount = donationAmounts[projectId];
+      
+      // Validate amount
+      if (!amount || isNaN(amount)) {
+        setSuccessMessage('Please enter a valid donation amount');
+        return;
+      }
+      
+      const numericAmount = parseFloat(amount);
+      if (numericAmount <= 0) {
+        setSuccessMessage('Donation amount must be greater than 0');
+        return;
+      }
+      
+      if (numericAmount > 1000000) {
+        setSuccessMessage('Donation amount cannot exceed £1,000,000');
+        return;
+      }
+
+      const project = allProjects.find(p => p.id === projectId);
+      if (!project) {
+        setSuccessMessage('Project not found');
+        return;
+      }
+      
+      // Format amount to 2 decimal places
+      const formattedAmount = numericAmount.toFixed(2);
+      
+      // Create donation item with complete project details
+      const donationItem = {
+        id: `donation-${projectId}-${Date.now()}`,
+        type: 'donation',
+        name: project.title,
+        description: project.description,
+        amount: parseFloat(formattedAmount),
+        price: parseFloat(formattedAmount),
+        quantity: 1,
+        currency: 'GBP',
+        projectId: project.id,
+        image: project.image,
+        category: project.category,
+        organization: project.organization || 'HopeBridge'
+      };
+
+      // Add or update the donation in the cart
+      const result = addOrUpdateDonation(donationItem);
+      
+      // Set appropriate success message
+      if (result === 'updated') {
+        setSuccessMessage(`Donation updated to £${formattedAmount}`);
+      } else {
+        setSuccessMessage(`£${formattedAmount} donation added to cart`);
+      }
+      
+      // Clear the donation amount for this project
+      setDonationAmounts(prev => ({
+        ...prev,
+        [projectId]: ''
+      }));
+      
+      // Navigate to cart page
+      navigate('/cart');
+    } catch (err) {
+      console.error('Error processing donation:', err);
+      setSuccessMessage('Failed to process donation. Please try again.');
+    }
+  };
+
   const filteredProjects = category === 'All' 
     ? allProjects 
     : allProjects.filter(project => project.category === category);
 
   const totalPages = Math.ceil(filteredProjects.length / projectsPerPage);
-  const currentProjects = filteredProjects.slice(
-    (page - 1) * projectsPerPage,
-    page * projectsPerPage
-  );
+  
+  // Update currentProjects when filters or pagination changes
+  useEffect(() => {
+    const paginatedProjects = filteredProjects.slice(
+      (page - 1) * projectsPerPage,
+      page * projectsPerPage
+    );
+    setCurrentProjects(paginatedProjects);
+  }, [filteredProjects, page, projectsPerPage]);
 
   const handlePageChange = (event, value) => {
     setPage(value);
@@ -351,6 +360,20 @@ const DonationsPage = () => {
   const handleCategoryChange = (event) => {
     setCategory(event.target.value);
     setPage(1);
+  };
+
+  // Calculate updated project totals including recent donations
+  const getDisplayTotal = (project) => {
+    if (!project || !project.raised) return 0;
+    return getUpdatedProjectTotal(project.id, project.raised);
+  };
+
+  // Calculate updated progress percentage
+  const getDisplayProgress = (project) => {
+    if (!project || !project.raised || !project.goal) return 0;
+    const updatedTotal = getDisplayTotal(project);
+    const progress = Math.min(Math.round((updatedTotal / project.goal) * 100), 100);
+    return progress;
   };
 
   return (
@@ -480,19 +503,19 @@ const DonationsPage = () => {
                         Location: {project.location}
                       </Typography>
                       <Box sx={{ mt: 2 }}>
-                        <LinearProgress 
-                          variant="determinate" 
-                          value={(project.raised / project.goal) * 100} 
-                          sx={{ mb: 1 }}
-                        />
                         <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                          <Typography variant="body2">
-                            Raised: £{project.raised.toLocaleString()}
+                          <Typography variant="body2" color="text.secondary">
+                            {getDisplayProgress(project)}% Complete
                           </Typography>
-                          <Typography variant="body2">
-                            Goal: £{project.goal.toLocaleString()}
+                          <Typography variant="body2" color="text.secondary">
+                            £{getDisplayTotal(project).toLocaleString()} of £{project.goal.toLocaleString()}
                           </Typography>
                         </Box>
+                        <LinearProgress 
+                          variant="determinate" 
+                          value={getDisplayProgress(project)} 
+                          sx={{ height: 10, borderRadius: 5, mt: 1 }}
+                        />
                       </Box>
                       
                       {/* Custom Donation Amount Input */}

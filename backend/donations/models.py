@@ -198,3 +198,17 @@ class Payment(models.Model):
             random_str = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
             self.reference_number = f"HB-{timestamp}-{random_str}"
         super().save(*args, **kwargs) 
+
+class ExchangeRate(models.Model):
+    """Model to store currency exchange rates."""
+    base_currency = models.CharField(max_length=3, default='USD')
+    target_currency = models.CharField(max_length=3)
+    rate = models.DecimalField(max_digits=12, decimal_places=6)
+    last_updated = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        unique_together = ('base_currency', 'target_currency')
+        ordering = ['base_currency', 'target_currency']
+    
+    def __str__(self):
+        return f"{self.base_currency}/{self.target_currency}: {self.rate}" 

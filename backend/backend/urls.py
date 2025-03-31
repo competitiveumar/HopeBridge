@@ -13,7 +13,8 @@ from django.http import HttpResponse
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def health_check(request):
-    return Response({'status': 'ok', 'message': 'API server is running'})
+    """Health check endpoint for the frontend to verify backend is running"""
+    return Response({'status': 'ok'})
 
 # Direct fallback chatbot endpoint - responds immediately without calling the AI service
 @api_view(['POST'])
@@ -52,7 +53,7 @@ urlpatterns = [
     path('api/companies/', include('companies.urls')),
     path('api/disasters/', include('disasters.urls')),
     path('api/gift-cards/', include('gift_cards.urls', namespace='gift_cards')),
-    path('api/health/', health_check, name='health_check'),
+    path('api/health-check/', health_check, name='health-check'),
     
     # Add both chatbot endpoints
     path('api/chatbot/', include('ai_chatbot.urls')),

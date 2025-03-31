@@ -9,7 +9,8 @@ from .views import (
     PasswordChangeView,
     UserDetailsView,
     get_user_info,
-    logout_view
+    logout_view,
+    social_auth,
 )
 
 urlpatterns = [
@@ -22,4 +23,5 @@ urlpatterns = [
     path('me/', UserDetailsView.as_view(), name='user-details'),
     path('info/', get_user_info, name='user-info'),
     path('logout/', logout_view, name='logout'),
+    path('social-auth/', social_auth, name='social-auth'),
 ] 

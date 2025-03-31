@@ -53,8 +53,11 @@ INSTALLED_APPS = [
     'disasters',
     'ai_chatbot',  # New AI chatbot app
     'donations',
-    'news',
+    
+    # News and events apps with explicit paths
+    'news.apps.NewsConfig',
     'gift_cards',
+    'events.apps.EventsConfig',
 ]
 
 MIDDLEWARE = [
@@ -236,6 +239,9 @@ STRIPE_PUBLISHABLE_KEY = os.environ.get('STRIPE_PUBLISHABLE_KEY', 'pk_test_51QHs
 STRIPE_SECRET_KEY = os.environ.get('STRIPE_SECRET_KEY', 'sk_test_51QHsF0G1gQ9FCYqUnQ6bmG4vAGvzQCyfq0POT5X8DWQW0SK2b8sOD82CDLgKTQ9j9v32HjxjQ8zHgmym8fDzHwVF00s43JVUJm')
 STRIPE_CURRENCY = 'usd'
 STRIPE_WEBHOOK_SECRET = os.environ.get('STRIPE_WEBHOOK_SECRET', 'whsec_your_webhook_secret')
+
+# Exchange Rate API settings
+EXCHANGE_RATE_API_KEY = os.environ.get('EXCHANGE_RATE_API_KEY', 'YOUR_API_KEY_HERE')
 
 # Email settings
 if DEBUG:

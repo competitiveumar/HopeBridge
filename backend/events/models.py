@@ -15,6 +15,7 @@ class EventCategory(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
+        app_label = 'events'
         verbose_name = _("Event Category")
         verbose_name_plural = _("Event Categories")
         ordering = ["name"]
@@ -79,6 +80,7 @@ class Event(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
+        app_label = 'events'
         verbose_name = _("Event")
         verbose_name_plural = _("Events")
         ordering = ["-start_date", "title"]
@@ -110,6 +112,11 @@ class EventImage(models.Model):
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     
+    class Meta:
+        app_label = 'events'
+        verbose_name = _("Event Image")
+        verbose_name_plural = _("Event Images")
+    
     def __str__(self):
         return self.title or f"Image {self.id}"
 
@@ -125,6 +132,7 @@ class EventRegistration(models.Model):
     notes = models.TextField(blank=True)
     
     class Meta:
+        app_label = 'events'
         verbose_name = _("Event Registration")
         verbose_name_plural = _("Event Registrations")
         unique_together = ('event', 'user')
@@ -146,6 +154,7 @@ class EventWorkshop(models.Model):
     is_active = models.BooleanField(default=True)
     
     class Meta:
+        app_label = 'events'
         verbose_name = _("Workshop")
         verbose_name_plural = _("Workshops")
         
@@ -164,6 +173,7 @@ class VolunteerPosition(models.Model):
     is_active = models.BooleanField(default=True)
     
     class Meta:
+        app_label = 'events'
         verbose_name = _("Volunteer Position")
         verbose_name_plural = _("Volunteer Positions")
         
@@ -187,6 +197,7 @@ class VolunteerApplication(models.Model):
     admin_notes = models.TextField(blank=True)
     
     class Meta:
+        app_label = 'events'
         verbose_name = _("Volunteer Application")
         verbose_name_plural = _("Volunteer Applications")
         unique_together = ('position', 'user')

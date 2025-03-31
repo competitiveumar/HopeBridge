@@ -9,7 +9,7 @@ const DEFAULT_COMMANDS = {
   'go to home': () => navigateTo('/'),
   'go to homepage': () => navigateTo('/'),
   'go to about': () => navigateTo('/about'),
-  'go to nonprofit': () => navigateTo('/nonprofit'),
+  'go to nonprofits': () => navigateTo('/nonprofits'),
   'go to companies': () => navigateTo('/companies'),
   'go to disasters': () => navigateTo('/disasters'),
   'go to donations': () => navigateTo('/donations'),
@@ -30,8 +30,6 @@ const DEFAULT_COMMANDS = {
   'go forward': () => window.history.forward(),
   
   // Accessibility commands
-  'enable high contrast': () => toggleAccessibilitySetting('highContrast', true),
-  'disable high contrast': () => toggleAccessibilitySetting('highContrast', false),
   'enable grayscale': () => toggleAccessibilitySetting('grayscale', true),
   'disable grayscale': () => toggleAccessibilitySetting('grayscale', false),
   'increase text size': () => adjustTextSize(10),
@@ -39,12 +37,6 @@ const DEFAULT_COMMANDS = {
   'reset text size': () => setTextSize(100),
   'enable captions': () => toggleAccessibilitySetting('captions', true),
   'disable captions': () => toggleAccessibilitySetting('captions', false),
-  
-  // Language commands
-  'switch to english': () => changeLanguage('en'),
-  'switch to spanish': () => changeLanguage('es'),
-  'switch to french': () => changeLanguage('fr'),
-  'switch to german': () => changeLanguage('de'),
   
   // Page interaction commands
   'scroll down': () => window.scrollBy({ top: 300, behavior: 'smooth' }),
@@ -76,12 +68,13 @@ const DEFAULT_COMMAND_ALIASES = {
   'donate': 'go to donations',
   'event page': 'go to events',
   'blog page': 'go to blog',
-  'sign in': 'go to login',
-  'log in': 'go to login',
-  'sign up': 'go to register',
-  'create account': 'go to register',
-  'dark mode': 'enable high contrast',
-  'light mode': 'disable high contrast',
+  'gift card page': 'go to gift cards',
+  'shopping cart': 'go to cart',
+  'checkout page': 'go to checkout',
+  'dashboard page': 'go to dashboard',
+  'nonprofits page': 'go to nonprofits',
+  'disasters page': 'go to disasters',
+  'companies page': 'go to companies',
   'increase font': 'increase text size',
   'bigger text': 'increase text size',
   'decrease font': 'decrease text size',
@@ -89,10 +82,6 @@ const DEFAULT_COMMAND_ALIASES = {
   'normal text': 'reset text size',
   'show captions': 'enable captions',
   'hide captions': 'disable captions',
-  'english': 'switch to english',
-  'spanish': 'switch to spanish',
-  'french': 'switch to french',
-  'german': 'switch to german',
   'scroll bottom': 'scroll to bottom',
   'scroll top': 'scroll to top',
   'play': 'play video',
@@ -106,11 +95,12 @@ const DEFAULT_COMMAND_ALIASES = {
 let COMMANDS = { ...DEFAULT_COMMANDS };
 let COMMAND_ALIASES = { ...DEFAULT_COMMAND_ALIASES };
 
-// Reference to the recognition instance
+// Reference to the recognition instance and state
 let recognition = null;
 let isListening = false;
 let commandFeedbackElement = null;
 let accessibilityContextRef = null;
+let isInitialized = false;
 
 /**
  * Initialize the voice command system
@@ -119,6 +109,10 @@ let accessibilityContextRef = null;
  * @param {boolean} disableGlobalCommands - Whether to disable global commands
  */
 export const initVoiceCommands = (accessibilityContext, customCommands = {}, disableGlobalCommands = false) => {
+  if (isInitialized) {
+    return true;
+  }
+
   accessibilityContextRef = accessibilityContext;
   
   // Reset commands if needed
@@ -126,7 +120,6 @@ export const initVoiceCommands = (accessibilityContext, customCommands = {}, dis
     COMMANDS = { ...customCommands };
     COMMAND_ALIASES = {};
   } else {
-    // Merge custom commands with defaults
     COMMANDS = { ...DEFAULT_COMMANDS, ...customCommands };
     COMMAND_ALIASES = { ...DEFAULT_COMMAND_ALIASES };
   }
@@ -135,31 +128,63 @@ export const initVoiceCommands = (accessibilityContext, customCommands = {}, dis
     console.error('Speech recognition not supported in this browser');
     return false;
   }
-  
-  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  recognition = new SpeechRecognition();
-  
-  recognition.continuous = true;
-  recognition.interimResults = false;
-  recognition.lang = document.documentElement.lang || 'en-US';
-  
-  recognition.onresult = handleVoiceCommand;
-  recognition.onerror = handleError;
-  recognition.onend = handleEnd;
-  
-  // Create feedback element for voice commands
-  createCommandFeedbackElement();
-  
-  return true;
+
+  try {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    recognition = new SpeechRecognition();
+    
+    recognition.continuous = true;
+    recognition.interimResults = false;
+    recognition.lang = document.documentElement.lang || 'en-US';
+    
+    recognition.onresult = handleVoiceCommand;
+    recognition.onerror = handleError;
+    recognition.onend = handleEnd;
+    
+    // Create feedback element for voice commands
+    createCommandFeedbackElement();
+    
+    isInitialized = true;
+    return true;
+  } catch (error) {
+    console.error('Error initializing speech recognition:', error);
+    return false;
+  }
+};
+
+/**
+ * Clean up voice recognition
+ */
+export const cleanupVoiceRecognition = () => {
+  if (recognition) {
+    try {
+      if (isListening) {
+        recognition.stop();
+      }
+      recognition.onresult = null;
+      recognition.onerror = null;
+      recognition.onend = null;
+      recognition = null;
+    } catch (error) {
+      console.error('Error cleaning up voice recognition:', error);
+    }
+  }
+  isListening = false;
+  isInitialized = false;
 };
 
 /**
  * Start listening for voice commands
  */
 export const startVoiceRecognition = () => {
-  if (!recognition) {
+  if (!recognition || !isInitialized) {
     const initialized = initVoiceCommands();
     if (!initialized) return false;
+  }
+  
+  if (isListening) {
+    console.log('Voice recognition is already active');
+    return true;
   }
   
   try {
@@ -169,6 +194,7 @@ export const startVoiceRecognition = () => {
     return true;
   } catch (error) {
     console.error('Error starting voice recognition:', error);
+    isListening = false;
     return false;
   }
 };
@@ -177,7 +203,11 @@ export const startVoiceRecognition = () => {
  * Stop listening for voice commands
  */
 export const stopVoiceRecognition = () => {
-  if (recognition && isListening) {
+  if (!recognition || !isListening) {
+    return false;
+  }
+
+  try {
     recognition.stop();
     isListening = false;
     updateCommandFeedback('Voice commands disabled', 'disabled');
@@ -187,8 +217,10 @@ export const stopVoiceRecognition = () => {
       }
     }, 3000);
     return true;
+  } catch (error) {
+    console.error('Error stopping voice recognition:', error);
+    return false;
   }
-  return false;
 };
 
 /**
@@ -315,25 +347,57 @@ const findPartialMatch = (transcript) => {
  * @param {SpeechRecognitionError} event - The error event
  */
 const handleError = (event) => {
-  console.error('Speech recognition error:', event.error);
-  updateCommandFeedback(`Error: ${event.error}`, 'error');
-  isListening = false;
+  console.log('Speech recognition error:', event.error);
+  
+  switch (event.error) {
+    case 'network':
+      updateCommandFeedback('Network error occurred. Please check your connection.', 'error');
+      break;
+    case 'not-allowed':
+    case 'service-not-allowed':
+      updateCommandFeedback('Microphone access denied. Please enable microphone access.', 'error');
+      isListening = false;
+      break;
+    case 'aborted':
+      // Don't show error for intentional stops
+      if (accessibilityContextRef?.voiceCommandsEnabled) {
+        updateCommandFeedback('Voice recognition was interrupted. Restarting...', 'warning');
+        // Add a small delay before restarting
+        setTimeout(() => {
+          if (accessibilityContextRef?.voiceCommandsEnabled && !isListening) {
+            startVoiceRecognition();
+          }
+        }, 1000);
+      }
+      break;
+    case 'no-speech':
+      // Don't show error for no speech detected
+      break;
+    default:
+      updateCommandFeedback('An error occurred with voice recognition. Please try again.', 'error');
+  }
 };
 
 /**
  * Handle speech recognition end
  */
 const handleEnd = () => {
-  if (isListening) {
-    // If we're supposed to be listening but recognition stopped, restart it
+  // Only try to restart if we're supposed to be listening
+  if (accessibilityContextRef?.voiceCommandsEnabled && isListening) {
     try {
-      recognition.start();
-      updateCommandFeedback('Listening for voice commands...', 'listening');
+      // Add a small delay before restarting to prevent rapid restarts
+      setTimeout(() => {
+        if (accessibilityContextRef?.voiceCommandsEnabled && !recognition.started) {
+          recognition.start();
+        }
+      }, 300);
     } catch (error) {
-      console.error('Could not restart voice recognition:', error);
+      console.error('Error restarting voice recognition:', error);
       isListening = false;
-      updateCommandFeedback('Voice commands stopped', 'disabled');
+      updateCommandFeedback('Voice recognition error. Please try again.', 'error');
     }
+  } else {
+    isListening = false;
   }
 };
 
@@ -488,44 +552,6 @@ const setTextSize = (size) => {
     accessibilityContextRef.updateSettings({ textSize: size });
     speakFeedback(`Text size reset to ${size} percent`);
   }
-};
-
-/**
- * Change the language
- * @param {string} lang - The language code to change to
- */
-const changeLanguage = (lang) => {
-  if (accessibilityContextRef && accessibilityContextRef.updateSettings) {
-    accessibilityContextRef.updateSettings({ language: lang });
-    
-    // Also update i18n language if available
-    if (window.i18n && typeof window.i18n.changeLanguage === 'function') {
-      window.i18n.changeLanguage(lang);
-    }
-    
-    localStorage.setItem('language', lang);
-    speakFeedback(`Language changed to ${getLangName(lang)}`);
-    
-    // Force page translation
-    if (typeof window.translatePage === 'function') {
-      window.translatePage();
-    }
-  }
-};
-
-/**
- * Get language name from code
- * @param {string} code - The language code
- * @returns {string} - The language name
- */
-const getLangName = (code) => {
-  const languages = {
-    en: 'English',
-    es: 'Spanish',
-    fr: 'French',
-    de: 'German',
-  };
-  return languages[code] || code;
 };
 
 /**
@@ -700,7 +726,7 @@ const showCommandsList = () => {
   document.body.appendChild(modal);
   
   // Also speak a few common commands
-  speakFeedback('Here are some commands you can use: go to home, increase text size, enable high contrast, scroll down, play video, and more.');
+  speakFeedback('Here are some commands you can use: go to home, increase text size, enable grayscale, scroll down, play video, and more.');
 };
 
 /**
@@ -712,7 +738,6 @@ const categorizeCommands = (commands) => {
   const categories = {
     'Navigation': [],
     'Accessibility': [],
-    'Language': [],
     'Page Interaction': [],
     'Media Controls': [],
     'Help': [],
@@ -724,9 +749,6 @@ const categorizeCommands = (commands) => {
   
   // Accessibility commands
   const accessibilityPrefixes = ['enable', 'disable', 'increase', 'decrease', 'reset'];
-  
-  // Language commands
-  const languagePrefixes = ['switch to'];
   
   // Page interaction commands
   const interactionPrefixes = ['scroll', 'click', 'submit'];
@@ -743,8 +765,6 @@ const categorizeCommands = (commands) => {
       categories['Navigation'].push(command);
     } else if (accessibilityPrefixes.some(prefix => command.startsWith(prefix))) {
       categories['Accessibility'].push(command);
-    } else if (languagePrefixes.some(prefix => command.startsWith(prefix))) {
-      categories['Language'].push(command);
     } else if (interactionPrefixes.some(prefix => command.startsWith(prefix))) {
       categories['Page Interaction'].push(command);
     } else if (mediaPrefixes.some(prefix => command.startsWith(prefix))) {

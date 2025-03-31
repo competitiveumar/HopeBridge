@@ -9,6 +9,7 @@ class Category(models.Model):
     description = models.TextField(blank=True)
     
     class Meta:
+        app_label = 'news'
         verbose_name_plural = "Categories"
         ordering = ['name']
     
@@ -40,6 +41,7 @@ class Article(models.Model):
     published_at = models.DateTimeField(blank=True, null=True)
     
     class Meta:
+        app_label = 'news'
         ordering = ['-published_at', '-created_at']
         indexes = [
             models.Index(fields=['-published_at']),
@@ -67,6 +69,7 @@ class Video(models.Model):
     published_at = models.DateTimeField(blank=True, null=True)
     
     class Meta:
+        app_label = 'news'
         ordering = ['-published_at', '-created_at']
     
     def __str__(self):
@@ -91,6 +94,7 @@ class FeaturedStory(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
+        app_label = 'news'
         verbose_name_plural = "Featured Stories"
         ordering = ['-created_at']
     

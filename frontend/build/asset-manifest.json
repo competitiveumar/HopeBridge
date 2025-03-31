@@ -1,16 +1,19 @@
 {
   "files": {
-    "main.css": "./static/css/main.7be4561d.css",
-    "main.js": "./static/js/main.16330297.js",
-    "static/js/453.f0efa315.chunk.js": "./static/js/453.f0efa315.chunk.js",
-    "static/media/axios.cjs": "./static/media/axios.2428a626bcdc7310a4fa.cjs",
-    "index.html": "./index.html",
-    "main.7be4561d.css.map": "./static/css/main.7be4561d.css.map",
-    "main.16330297.js.map": "./static/js/main.16330297.js.map",
-    "453.f0efa315.chunk.js.map": "./static/js/453.f0efa315.chunk.js.map"
+    "main.css": "/static/css/main.452d6efd.css",
+    "main.js": "/static/js/main.234efc01.js",
+    "static/js/844.fc1a7ee6.chunk.js": "/static/js/844.fc1a7ee6.chunk.js",
+    "static/js/511.921e91b3.chunk.js": "/static/js/511.921e91b3.chunk.js",
+    "static/media/logo.png": "/static/media/logo.95ba46713d011a4b81fb.png",
+    "static/media/axios.cjs": "/static/media/axios.2428a626bcdc7310a4fa.cjs",
+    "index.html": "/index.html",
+    "main.452d6efd.css.map": "/static/css/main.452d6efd.css.map",
+    "main.234efc01.js.map": "/static/js/main.234efc01.js.map",
+    "844.fc1a7ee6.chunk.js.map": "/static/js/844.fc1a7ee6.chunk.js.map",
+    "511.921e91b3.chunk.js.map": "/static/js/511.921e91b3.chunk.js.map"
   },
   "entrypoints": [
-    "static/css/main.7be4561d.css",
-    "static/js/main.16330297.js"
+    "static/css/main.452d6efd.css",
+    "static/js/main.234efc01.js"
   ]
 }

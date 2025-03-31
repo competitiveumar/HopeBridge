@@ -141,4 +141,81 @@ def logout_view(request):
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def social_auth(request):
+    """
+    Handle social authentication for Google and Facebook
+    """
+    provider = request.data.get('provider', '')
+    token = request.data.get('token', '')
+    
+    if not provider or not token:
+        return Response({
+            'error': 'Provider and token are required'
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    # Check if user already exists with this email
+    email = request.data.get('email', '')
+    if not email:
+        return Response({
+            'error': 'Email is required'
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    try:
+        # Check if user exists
+        user = User.objects.filter(email=email).first()
+        
+        # If user doesn't exist, create a new one
+        if not user:
+            # Extract names from request
+            first_name = request.data.get('first_name', '')
+            last_name = request.data.get('last_name', '')
+            
+            # If names not provided, use default from email
+            if not first_name:
+                first_name = email.split('@')[0]
+            if not last_name:
+                last_name = 'User'
+            
+            # Create user
+            user = User.objects.create(
+                email=email,
+                username=email,  # Use email as username
+                first_name=first_name,
+                last_name=last_name,
+                # Set unusable password for social users
+                is_active=True
+            )
+            user.set_unusable_password()
+            user.save()
+            
+            # Create profile if needed
+            try:
+                profile = UserProfile.objects.get(user=user)
+            except UserProfile.DoesNotExist:
+                profile = UserProfile.objects.create(
+                    user=user,
+                    provider=provider
+                )
+        
+        # Generate token
+        refresh = RefreshToken.for_user(user)
+        
+        return Response({
+            'refresh': str(refresh),
+            'access': str(refresh.access_token),
+            'user': {
+                'id': user.id,
+                'email': user.email,
+                'first_name': user.first_name,
+                'last_name': user.last_name,
+            }
+        }, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        return Response({
+            'error': str(e)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 # Create your views here. 

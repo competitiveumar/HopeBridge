@@ -1,168 +1,126 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 
 const CartContext = createContext();
 
-export const useCart = () => useContext(CartContext);
-
 export const CartProvider = ({ children }) => {
   const [cartItems, setCartItems] = useState(() => {
-    // Initialize state from localStorage
-    try {
+    if (typeof window !== 'undefined') {
       const savedCart = localStorage.getItem('cart');
       return savedCart ? JSON.parse(savedCart) : [];
-    } catch (error) {
-      console.error('Error loading cart from localStorage:', error);
-      return [];
     }
+    return [];
   });
   
-  const [isRecurring, setIsRecurring] = useState(() => {
-    try {
-      const savedRecurring = localStorage.getItem('isRecurring');
-      return savedRecurring ? JSON.parse(savedRecurring) : false;
-    } catch (error) {
-      return false;
-    }
-  });
-  
-  const [recurringFrequency, setRecurringFrequency] = useState(() => {
-    try {
-      const savedFrequency = localStorage.getItem('recurringFrequency');
-      return savedFrequency || 'monthly';
-    } catch (error) {
-      return 'monthly';
-    }
-  });
-  
-  const [giftCard, setGiftCard] = useState(() => {
-    try {
-      const savedGiftCard = localStorage.getItem('giftCard');
-      return savedGiftCard ? JSON.parse(savedGiftCard) : null;
-    } catch (error) {
-      return null;
-    }
-  });
-  
-  // Save to localStorage whenever state changes
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [recurringFrequency, setRecurringFrequency] = useState('monthly');
+  const [giftCard, setGiftCard] = useState(null);
+
   useEffect(() => {
-    try {
+    if (typeof window !== 'undefined') {
       localStorage.setItem('cart', JSON.stringify(cartItems));
-      localStorage.setItem('isRecurring', JSON.stringify(isRecurring));
-      localStorage.setItem('recurringFrequency', recurringFrequency);
-      if (giftCard) {
-        localStorage.setItem('giftCard', JSON.stringify(giftCard));
-      } else {
-        localStorage.removeItem('giftCard');
-      }
-    } catch (error) {
-      console.error('Error saving cart to localStorage:', error);
     }
-  }, [cartItems, isRecurring, recurringFrequency, giftCard]);
-  
+  }, [cartItems]);
+
   const addToCart = (item) => {
-    // Check if item already exists in cart
-    const existingItemIndex = cartItems.findIndex(
-      cartItem => cartItem.id === item.id
-    );
-    
-    if (existingItemIndex !== -1) {
-      // Update quantity if item exists
-      const updatedCartItems = [...cartItems];
-      updatedCartItems[existingItemIndex] = {
-        ...updatedCartItems[existingItemIndex],
-        quantity: updatedCartItems[existingItemIndex].quantity + (item.quantity || 1)
-      };
-      setCartItems(updatedCartItems);
-    } else {
-      // Add new item to cart
-      setCartItems([...cartItems, { ...item, quantity: item.quantity || 1 }]);
-    }
+    setCartItems(prev => {
+      const existingItem = prev.find(i => i.id === item.id);
+      if (existingItem) {
+        return prev.map(i => 
+          i.id === item.id 
+            ? { ...i, quantity: i.quantity + 1 }
+            : i
+        );
+      }
+      return [...prev, { ...item, quantity: 1 }];
+    });
   };
-  
-  // Method specifically for handling donations to a charity/project
+
+  const removeFromCart = (itemId) => {
+    setCartItems(prev => prev.filter(item => item.id !== itemId));
+  };
+
+  const updateQuantity = (itemId, quantity) => {
+    setCartItems(prev => 
+      prev.map(item => 
+        item.id === itemId 
+          ? { ...item, quantity: Math.max(0, quantity) }
+          : item
+      ).filter(item => item.quantity > 0)
+    );
+  };
+
+  const clearCart = () => {
+    setCartItems([]);
+  };
+
+  const getCartTotal = () => {
+    return cartItems.reduce((total, item) => total + (item.price * item.quantity), 0);
+  };
+
+  const getTotalItems = () => {
+    return cartItems.reduce((total, item) => total + item.quantity, 0);
+  };
+
+  // Add new function for handling donations
   const addOrUpdateDonation = (donationItem) => {
-    // Find if we already have a donation for this project
-    const existingDonationIndex = cartItems.findIndex(
+    // Check if a donation for this project already exists
+    const existingItemIndex = cartItems.findIndex(
       item => item.type === 'donation' && item.projectId === donationItem.projectId
     );
     
-    if (existingDonationIndex !== -1) {
-      // If donation exists, update it
-      const updatedCartItems = [...cartItems];
-      updatedCartItems[existingDonationIndex] = {
-        ...donationItem,
-        id: cartItems[existingDonationIndex].id // Preserve the original ID
-      };
-      setCartItems(updatedCartItems);
-      return 'updated';
+    let result = 'added';
+    
+    if (existingItemIndex !== -1) {
+      // Update existing donation
+      setCartItems(prev => 
+        prev.map((item, index) => 
+          index === existingItemIndex 
+            ? { ...item, price: donationItem.price, amount: donationItem.amount }
+            : item
+        )
+      );
+      result = 'updated';
     } else {
-      // Add new donation to cart
-      setCartItems([...cartItems, donationItem]);
-      return 'added';
+      // Add new donation
+      setCartItems(prev => [...prev, donationItem]);
     }
-  };
-  
-  const removeFromCart = (itemId) => {
-    setCartItems(cartItems.filter(item => item.id !== itemId));
-  };
-  
-  const updateQuantity = (itemId, newQuantity) => {
-    if (newQuantity < 1) return;
     
-    const updatedCartItems = cartItems.map(item => 
-      item.id === itemId ? { ...item, quantity: newQuantity } : item
-    );
-    
-    setCartItems(updatedCartItems);
+    return result;
   };
-  
-  const clearCart = () => {
-    setCartItems([]);
-    setGiftCard(null);
-    setIsRecurring(false);
-    localStorage.removeItem('cart');
-    localStorage.removeItem('giftCard');
-    localStorage.removeItem('isRecurring');
-  };
-  
-  const getSubtotal = () => {
-    return cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-  };
-  
-  const getTotalItems = () => {
-    return cartItems.reduce((sum, item) => sum + item.quantity, 0);
-  };
-  
-  const addGiftCard = (card) => {
-    setGiftCard(card);
-  };
-  
-  const removeGiftCard = () => {
-    setGiftCard(null);
-  };
-  
+
+  // Toggle recurring donation
   const toggleRecurring = () => {
     setIsRecurring(!isRecurring);
   };
-  
+
+  // Add gift card
+  const addGiftCard = (card) => {
+    setGiftCard(card);
+  };
+
+  // Remove gift card
+  const removeGiftCard = () => {
+    setGiftCard(null);
+  };
+
   return (
     <CartContext.Provider
       value={{
         cartItems,
-        isRecurring,
-        recurringFrequency,
-        giftCard,
         addToCart,
         removeFromCart,
         updateQuantity,
         clearCart,
-        getSubtotal,
+        getCartTotal,
         getTotalItems,
-        addGiftCard,
-        removeGiftCard,
+        addOrUpdateDonation,
+        isRecurring,
         toggleRecurring,
+        recurringFrequency,
         setRecurringFrequency,
-        addOrUpdateDonation
+        giftCard,
+        addGiftCard,
+        removeGiftCard
       }}
     >
       {children}
@@ -170,4 +128,10 @@ export const CartProvider = ({ children }) => {
   );
 };
 
-export default CartContext; 
+export const useCart = () => {
+  const context = useContext(CartContext);
+  if (!context) {
+    throw new Error('useCart must be used within a CartProvider');
+  }
+  return context;
+}; 

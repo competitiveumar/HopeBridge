@@ -5,6 +5,10 @@ Django settings for backend project.
 import os
 from pathlib import Path
 from datetime import timedelta
+import dotenv
+
+# Load environment variables from .env file
+dotenv.load_dotenv(os.path.join(Path(__file__).resolve().parent.parent, '.env'))
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -36,6 +40,8 @@ INSTALLED_APPS = [
     'disasters',
     'gift_cards',
     'ai_chatbot',
+    'news',
+    'events',
 ]
 
 MIDDLEWARE = [
@@ -184,5 +190,10 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # Gemini API Key for chatbot
 GEMINI_API_KEY = 'AIzaSyDN6LpA6y_itDxq0fAv_9He0s4qfodg9A8'
+
+# Stripe Settings
+STRIPE_PUBLISHABLE_KEY = os.environ.get('STRIPE_PUBLISHABLE_KEY', '')
+STRIPE_SECRET_KEY = os.environ.get('STRIPE_SECRET_KEY', '')
+STRIPE_WEBHOOK_SECRET = os.environ.get('STRIPE_WEBHOOK_SECRET', '')
 
 # ... rest of the settings ... 

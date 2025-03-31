@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import * as React from 'react';
 import {
   Box,
   Container,
@@ -24,6 +24,14 @@ import {
   ListItem,
   ListItemIcon,
   ListItemText,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
+  Snackbar,
+  IconButton,
+  FormHelperText,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
@@ -31,21 +39,38 @@ import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import EventIcon from '@mui/icons-material/Event';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
+import CloseIcon from '@mui/icons-material/Close';
 import axios from 'axios';
 import { Link as RouterLink } from 'react-router-dom';
+import PhoneInput from 'react-phone-input-2';
+import 'react-phone-input-2/lib/style.css';
 
 const EventsPage = () => {
-  const [location, setLocation] = useState('');
-  const [eventType, setEventType] = useState('');
-  const [date, setDate] = useState('');
-  const [events, setEvents] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
+  const [location, setLocation] = React.useState('');
+  const [eventType, setEventType] = React.useState('');
+  const [date, setDate] = React.useState('');
+  const [events, setEvents] = React.useState([]);
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState(null);
+  const [page, setPage] = React.useState(1);
+  const [totalPages, setTotalPages] = React.useState(1);
   const eventsPerPage = 6;
+  
+  // Registration form states
+  const [openRegistration, setOpenRegistration] = React.useState(false);
+  const [selectedEvent, setSelectedEvent] = React.useState(null);
+  const [registrationForm, setRegistrationForm] = React.useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '+44',
+    attendees: 1,
+    specialRequirements: ''
+  });
+  const [formErrors, setFormErrors] = React.useState({});
+  const [registrationSuccess, setRegistrationSuccess] = React.useState(false);
 
-  useEffect(() => {
+  React.useEffect(() => {
     fetchEvents();
   }, [page, eventType, date, location]);
 
@@ -390,7 +415,113 @@ const EventsPage = () => {
   };
 
   const handleEventRegister = (event) => {
-    // Implement event registration logic
+    setSelectedEvent(event);
+    setOpenRegistration(true);
+    // Reset form when opening
+    setRegistrationForm({
+      firstName: '',
+      lastName: '',
+      email: '',
+      phone: '+44',
+      attendees: 1,
+      specialRequirements: ''
+    });
+    setFormErrors({});
+  };
+
+  const handleCloseRegistration = () => {
+    setOpenRegistration(false);
+  };
+  
+  const handleFormChange = (e) => {
+    const { name, value } = e.target;
+    setRegistrationForm({
+      ...registrationForm,
+      [name]: value
+    });
+    
+    // Clear the error for this field when user starts typing
+    if (formErrors[name]) {
+      setFormErrors({
+        ...formErrors,
+        [name]: ''
+      });
+    }
+  };
+  
+  const handlePhoneChange = (newPhone) => {
+    setRegistrationForm({
+      ...registrationForm,
+      phone: newPhone
+    });
+    
+    // Clear the error for phone when user changes the value
+    if (formErrors.phone) {
+      setFormErrors({
+        ...formErrors,
+        phone: ''
+      });
+    }
+  };
+  
+  const validateForm = () => {
+    const errors = {};
+    
+    if (!registrationForm.firstName.trim()) {
+      errors.firstName = 'First name is required';
+    }
+    
+    if (!registrationForm.lastName.trim()) {
+      errors.lastName = 'Last name is required';
+    }
+    
+    if (!registrationForm.email.trim()) {
+      errors.email = 'Email is required';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(registrationForm.email)) {
+      errors.email = 'Please enter a valid email address';
+    }
+    
+    if (!registrationForm.phone) {
+      errors.phone = 'Phone number is required';
+    }
+    
+    if (registrationForm.attendees < 1) {
+      errors.attendees = 'At least 1 attendee is required';
+    }
+    
+    return errors;
+  };
+  
+  const handleSubmitRegistration = async () => {
+    const errors = validateForm();
+    
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
+      return;
+    }
+    
+    try {
+      // In a real app, you would submit to the backend
+      // await api.post('/events/register', { eventId: selectedEvent.id, ...registrationForm });
+      
+      // For now, we'll simulate a successful registration
+      setRegistrationSuccess(true);
+      
+      // Close the dialog after a delay
+      setTimeout(() => {
+        setOpenRegistration(false);
+        // After the dialog is closed, we'll keep the success message visible
+      }, 1500);
+    } catch (error) {
+      console.error('Registration failed:', error);
+      setFormErrors({
+        submit: 'Registration failed. Please try again later.'
+      });
+    }
+  };
+  
+  const handleCloseSuccessMessage = () => {
+    setRegistrationSuccess(false);
   };
 
   const handleHostEventClick = () => {
@@ -797,6 +928,209 @@ const EventsPage = () => {
           </Grid>
         </Grid>
       </Container>
+
+      {/* Event Registration Dialog */}
+      <Dialog 
+        open={openRegistration} 
+        onClose={handleCloseRegistration}
+        fullWidth
+        maxWidth="sm"
+        aria-labelledby="event-registration-dialog-title"
+      >
+        <DialogTitle id="event-registration-dialog-title" sx={{ pb: 1 }}>
+          {registrationSuccess ? (
+            <Typography variant="h5" color="success.main" sx={{ display: 'flex', alignItems: 'center' }}>
+              <CheckCircleOutlineIcon sx={{ mr: 1 }} />
+              Registration Successful!
+            </Typography>
+          ) : (
+            `Register for ${selectedEvent?.title || 'Event'}`
+          )}
+          <IconButton
+            aria-label="close"
+            onClick={handleCloseRegistration}
+            sx={{
+              position: 'absolute',
+              right: 8,
+              top: 8,
+              color: (theme) => theme.palette.grey[500],
+            }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        
+        <DialogContent dividers>
+          {registrationSuccess ? (
+            <Box sx={{ textAlign: 'center', py: 3 }}>
+              <Typography variant="body1" paragraph>
+                Thank you for registering for {selectedEvent?.title}!
+              </Typography>
+              <Typography variant="body1" paragraph>
+                We've sent a confirmation email to {registrationForm.email} with all the details.
+              </Typography>
+              <Typography variant="body1">
+                If you have any questions, please contact our events team.
+              </Typography>
+            </Box>
+          ) : (
+            <>
+              <DialogContentText sx={{ mb: 3 }}>
+                Please fill in your details to register for this event. All fields marked with * are required.
+              </DialogContentText>
+              
+              {formErrors.submit && (
+                <Alert severity="error" sx={{ mb: 3 }}>{formErrors.submit}</Alert>
+              )}
+              
+              <Grid container spacing={2}>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    required
+                    fullWidth
+                    label="First Name"
+                    name="firstName"
+                    value={registrationForm.firstName}
+                    onChange={handleFormChange}
+                    error={!!formErrors.firstName}
+                    helperText={formErrors.firstName}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    required
+                    fullWidth
+                    label="Last Name"
+                    name="lastName"
+                    value={registrationForm.lastName}
+                    onChange={handleFormChange}
+                    error={!!formErrors.lastName}
+                    helperText={formErrors.lastName}
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <TextField
+                    required
+                    fullWidth
+                    label="Email Address"
+                    name="email"
+                    type="email"
+                    value={registrationForm.email}
+                    onChange={handleFormChange}
+                    error={!!formErrors.email}
+                    helperText={formErrors.email}
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <PhoneInput
+                    country={'gb'}
+                    value={registrationForm.phone}
+                    onChange={phone => handlePhoneChange(phone)}
+                    inputStyle={{
+                      width: '100%',
+                      height: '56px',
+                      fontSize: '1rem',
+                      padding: '16.5px 14px 16.5px 58px',
+                      borderRadius: '4px',
+                      border: '1px solid rgba(0, 0, 0, 0.23)',
+                      backgroundColor: 'transparent'
+                    }}
+                    buttonStyle={{
+                      border: '1px solid rgba(0, 0, 0, 0.23)',
+                      borderRight: 'none',
+                      borderRadius: '4px 0 0 4px',
+                      backgroundColor: 'transparent'
+                    }}
+                    containerStyle={{
+                      width: '100%'
+                    }}
+                    dropdownStyle={{
+                      width: '300px'
+                    }}
+                    enableSearch={true}
+                    searchStyle={{
+                      width: '100%',
+                      height: '40px',
+                      padding: '10px',
+                      borderRadius: '4px',
+                      border: '1px solid rgba(0, 0, 0, 0.23)',
+                      marginBottom: '10px'
+                    }}
+                    inputProps={{
+                      required: true,
+                      name: 'phone'
+                    }}
+                  />
+                  {formErrors.phone && (
+                    <FormHelperText error>{formErrors.phone}</FormHelperText>
+                  )}
+                </Grid>
+                <Grid item xs={12}>
+                  <TextField
+                    required
+                    fullWidth
+                    label="Number of Attendees"
+                    name="attendees"
+                    type="number"
+                    value={registrationForm.attendees}
+                    onChange={handleFormChange}
+                    error={!!formErrors.attendees}
+                    helperText={formErrors.attendees}
+                    InputProps={{ inputProps: { min: 1 } }}
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <TextField
+                    fullWidth
+                    label="Special Requirements"
+                    name="specialRequirements"
+                    value={registrationForm.specialRequirements}
+                    onChange={handleFormChange}
+                    multiline
+                    rows={3}
+                    helperText="Accessibility needs, dietary restrictions, etc. (Optional)"
+                  />
+                </Grid>
+              </Grid>
+              
+              {selectedEvent && (
+                <Box sx={{ mt: 3, p: 2, bgcolor: 'background.default', borderRadius: 1 }}>
+                  <Typography variant="subtitle2" gutterBottom>Event Details:</Typography>
+                  <Typography variant="body2"><strong>Date:</strong> {formatDateRange(selectedEvent.start_date, selectedEvent.end_date)}</Typography>
+                  <Typography variant="body2"><strong>Location:</strong> {selectedEvent.location}</Typography>
+                </Box>
+              )}
+            </>
+          )}
+        </DialogContent>
+        
+        {!registrationSuccess && (
+          <DialogActions sx={{ px: 3, py: 2 }}>
+            <Button onClick={handleCloseRegistration}>Cancel</Button>
+            <Button 
+              onClick={handleSubmitRegistration} 
+              variant="contained" 
+              color="primary"
+              disableElevation
+            >
+              Register Now
+            </Button>
+          </DialogActions>
+        )}
+      </Dialog>
+      
+      {/* Success Snackbar */}
+      <Snackbar
+        open={registrationSuccess && !openRegistration}
+        autoHideDuration={6000}
+        onClose={handleCloseSuccessMessage}
+        message={`Successfully registered for ${selectedEvent?.title || 'the event'}`}
+        action={
+          <IconButton size="small" color="inherit" onClick={handleCloseSuccessMessage}>
+            <CloseIcon fontSize="small" />
+          </IconButton>
+        }
+      />
     </Box>
   );
 };

@@ -12,6 +12,9 @@ HopeBridge is a crowdfunding platform that connects donors with nonprofits and c
   - [Installation](#installation)
   - [Running the Application](#running-the-application)
 - [Testing](#testing)
+- [Test Accounts](#test-accounts)
+- [Gift Card Codes](#gift-card-codes)
+- [Voice Commands](#voice-commands)
 - [API Documentation](#api-documentation)
 - [Deployment](#deployment)
 - [Contributing](#contributing)
@@ -26,6 +29,9 @@ HopeBridge is a crowdfunding platform that connects donors with nonprofits and c
 - **Campaign Management**: For nonprofits to create and manage fundraising campaigns
 - **Impact Tracking**: Real-time updates on campaign progress and impact
 - **Responsive Design**: Fully responsive UI that works on all devices
+- **Gift Cards**: Purchase and redeem gift cards for charitable donations
+- **Accessibility**: Enhanced accessibility features with react-axe and react-aria
+- **Voice Commands**: Navigate the application using voice commands
 
 ## Technology Stack
 
@@ -35,6 +41,10 @@ HopeBridge is a crowdfunding platform that connects donors with nonprofits and c
 - Redux for state management
 - React Router for navigation
 - Jest and React Testing Library for testing
+- i18next for internationalization
+- Firebase integration
+- Socket.io for real-time features
+- Recharts for data visualization
 
 ### Backend
 - Django (Python) with Django REST Framework
@@ -42,6 +52,8 @@ HopeBridge is a crowdfunding platform that connects donors with nonprofits and c
 - PostgreSQL for database
 - Redis for caching
 - Celery for background tasks
+- Channels and Daphne for WebSocket support
+- Google Generative AI integration
 
 ### Infrastructure
 - AWS S3 for file storage
@@ -51,7 +63,7 @@ HopeBridge is a crowdfunding platform that connects donors with nonprofits and c
 - Let's Encrypt for SSL
 
 ### External Services
-- Stripe/PayPal for payment processing
+- Stripe for payment processing
 - SendGrid for email notifications
 - Google Maps API for location services
 - Social login providers (Google, Facebook)
@@ -75,6 +87,10 @@ hopebridge/
 │   ├── campaigns/           # Campaign models and API
 │   ├── donations/           # Donation processing
 │   ├── core/                # Core functionality
+│   ├── gift_cards/          # Gift card functionality
+│   ├── events/              # Events management
+│   ├── disasters/           # Disaster relief campaigns
+│   ├── ai_chatbot/          # AI chatbot integration
 │   └── hopebridge/          # Django project settings
 ├── docker/                  # Docker configuration
 ├── docs/                    # Documentation
@@ -94,22 +110,44 @@ hopebridge/
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/hopebridge.git
-   cd hopebridge
+   git clone https://github.com/competitiveumar/HopeBridge.git
+   cd HopeBridge
    ```
 
 2. Set up the frontend:
    ```bash
    cd frontend
    npm install
+   
+   # Install additional frontend dependencies
+   npm install firebase socket.io-client --legacy-peer-deps
+   npm install i18next react-i18next react-axe --legacy-peer-deps
+   npm install i18next-http-backend i18next-browser-languagedetector --save
+   npm install react-aria react-focus-on --save
+   npm install --save-dev source-map-loader
+   npm install @craco/craco --save-dev
+   npm install mui-tel-input --legacy-peer-deps
+   npm install react-helmet
+   npm install react-helmet-async --legacy-peer-deps
+   npm install recharts
    ```
 
 3. Set up the backend:
    ```bash
    cd backend
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   python -m venv .venv
+   
+   # On Windows:
+   .venv\Scripts\Activate.ps1
+   # On Unix/MacOS:
+   source .venv/bin/activate
+   
    pip install -r requirements.txt
+   
+   # Install additional backend dependencies
+   pip install channels channels-redis daphne
+   pip install psutil
+   pip install google-generativeai
    ```
 
 4. Set up environment variables:
@@ -119,6 +157,7 @@ hopebridge/
 5. Initialize the database:
    ```bash
    cd backend
+   python manage.py makemigrations
    python manage.py migrate
    python manage.py createsuperuser
    python manage.py loaddata initial_data
@@ -129,6 +168,8 @@ hopebridge/
 1. Start the backend server:
    ```bash
    cd backend
+   .venv\Scripts\Activate.ps1  # On Windows
+   # source .venv/bin/activate  # On Unix/MacOS
    python manage.py runserver
    ```
 
@@ -158,6 +199,45 @@ npm test
 cd backend
 python manage.py test
 ```
+
+## Test Accounts
+
+### Donor Accounts
+- Email: avabob@gmail.com
+  Password: a1b2c3d4
+
+- Email: johnsmith@gmail.com
+  Password: a5b6v7f8&
+
+### Volunteer Accounts
+- Email: andrewjohnson@gmail.com
+  Password: a1b2c3d4
+
+- Email: susanevans@gmail.com
+  Password: a1b2c3d4
+
+## Gift Card Codes
+
+The following gift card codes can be used for testing:
+
+- **HOPE25**: £25 gift card
+- **GIVE50**: £50 gift card
+- **CARE75**: £75 gift card
+- **HELP100**: £100 gift card
+
+## Voice Commands
+
+The application supports voice navigation. Use the following format:
+
+```
+"Go to [name of page or action]"
+```
+
+Examples:
+- "Go to Home"
+- "Go to Donations"
+- "Go to About Us"
+- "Go to My Account"
 
 ## API Documentation
 
@@ -200,4 +280,8 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - [Material-UI](https://mui.com/)
 - [Django REST Framework](https://www.django-rest-framework.org/)
 - [Stripe](https://stripe.com/)
-- [AWS](https://aws.amazon.com/) 
+- [AWS](https://aws.amazon.com/)
+- [i18next](https://www.i18next.com/)
+- [Firebase](https://firebase.google.com/)
+- [Socket.io](https://socket.io/)
+- [Recharts](https://recharts.org/) 

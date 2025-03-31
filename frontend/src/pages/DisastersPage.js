@@ -32,6 +32,7 @@ import { styled } from '@mui/material/styles';
 import AddIcon from '@mui/icons-material/Add';
 import axios from 'axios';
 import { useCart } from '../contexts/CartContext';
+import { useDonation } from '../contexts/DonationContext';
 
 // Styled components
 const HeroSection = styled(Box)(({ theme }) => ({
@@ -115,6 +116,7 @@ const DisastersPage = () => {
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const projectsRef = useRef(null);
   const { addToCart } = useCart();
+  const { getUpdatedProjectTotal } = useDonation();
   const [selectedProject, setSelectedProject] = useState(null);
   const [donationAmount, setDonationAmount] = useState('25');
   const [customAmount, setCustomAmount] = useState('');
@@ -243,6 +245,19 @@ const DisastersPage = () => {
     setSnackbar({ ...snackbar, open: false });
   };
 
+  // Calculate updated project totals that include recent donations
+  const getDisplayTotal = (project) => {
+    const updatedTotal = getUpdatedProjectTotal(project.id, project.fundsRaised);
+    return updatedTotal;
+  };
+
+  // Calculate updated progress percentage
+  const getDisplayProgress = (project) => {
+    const updatedTotal = getDisplayTotal(project);
+    const progress = Math.min(Math.round((updatedTotal / project.fundingGoal) * 100), 100);
+    return progress;
+  };
+
   return (
     <>
       {/* Hero Section with Disaster Relief Image */}
@@ -310,15 +325,15 @@ const DisastersPage = () => {
                     </Typography>
                     <Box>
                       <Typography variant="body2" color="textSecondary">
-                        Progress: {project.progress}%
+                        Progress: {getDisplayProgress(project)}%
                       </Typography>
                       <ProgressBar
                         variant="determinate"
-                        value={project.progress}
+                        value={getDisplayProgress(project)}
                         color="primary"
                       />
                       <Typography variant="body2" color="textSecondary">
-                        £{project.fundsRaised.toLocaleString()} raised of £{project.fundingGoal.toLocaleString()}
+                        £{getDisplayTotal(project).toLocaleString()} raised of £{project.fundingGoal.toLocaleString()}
                       </Typography>
                     </Box>
                     <Button
@@ -355,10 +370,10 @@ const DisastersPage = () => {
           {selectedProject && (
             <Box sx={{ mb: 3 }}>
               <Typography variant="body2" color="text.secondary">
-                Progress: {selectedProject.progress}% funded
+                Progress: {getDisplayProgress(selectedProject)}% funded
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                £{selectedProject.fundsRaised.toLocaleString()} raised of £{selectedProject.fundingGoal.toLocaleString()}
+                £{getDisplayTotal(selectedProject).toLocaleString()} raised of £{selectedProject.fundingGoal.toLocaleString()}
               </Typography>
             </Box>
           )}

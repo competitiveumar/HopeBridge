@@ -6,7 +6,10 @@ from django.conf import settings
 from django.db.models import Q
 import stripe
 import logging
-from .models import Project, Donation, FundAllocation, CartItem, Payment
+import requests
+from datetime import timedelta
+from django.utils import timezone
+from .models import Project, Donation, FundAllocation, CartItem, Payment, ExchangeRate
 from .serializers import (
     ProjectSerializer,
     ProjectDetailSerializer,
@@ -14,7 +17,8 @@ from .serializers import (
     FundAllocationSerializer,
     CartItemSerializer,
     PaymentSerializer,
-    PaymentIntentSerializer
+    PaymentIntentSerializer,
+    ExchangeRateSerializer
 )
 from rest_framework.views import APIView
 
@@ -454,6 +458,14 @@ class CreatePaymentIntentView(APIView):
                 if donation_id:
                     metadata['donation_id'] = str(donation_id)
                 
+                # Add currency conversion metadata
+                original_amount_usd = serializer.validated_data.get('original_amount_usd')
+                exchange_rate = serializer.validated_data.get('exchange_rate')
+                
+                if original_amount_usd and currency.upper() != 'USD':
+                    metadata['original_amount_usd'] = str(original_amount_usd)
+                    metadata['exchange_rate'] = str(exchange_rate) if exchange_rate else '1.0'
+                
                 # Create customer if email is provided
                 customer = None
                 if email:
@@ -496,6 +508,20 @@ class CreatePaymentIntentView(APIView):
                 logger.info(f"Created payment intent: {intent.id}")
                 
                 # Create Payment record in our database
+                payment_metadata = {
+                    'stripe_status': intent.status,
+                    'client_secret': intent.client_secret,
+                }
+                
+                # Add currency conversion metadata to our payment record if available
+                original_amount_usd = serializer.validated_data.get('original_amount_usd')
+                exchange_rate = serializer.validated_data.get('exchange_rate')
+                
+                if original_amount_usd and currency.upper() != 'USD':
+                    payment_metadata['original_amount_usd'] = str(original_amount_usd)
+                    payment_metadata['exchange_rate'] = str(exchange_rate) if exchange_rate else '1.0'
+                    payment_metadata['converted_from'] = 'USD'
+                
                 payment = Payment.objects.create(
                     user=request.user if request.user.is_authenticated else None,
                     donation_id=donation_id,
@@ -509,10 +535,7 @@ class CreatePaymentIntentView(APIView):
                     recurring_frequency=recurring_frequency,
                     billing_email=email,
                     billing_name=name,
-                    metadata={
-                        'stripe_status': intent.status,
-                        'client_secret': intent.client_secret,
-                    }
+                    metadata=payment_metadata
                 )
                 
                 # Check if payment requires additional action
@@ -607,4 +630,100 @@ class StripeWebhookView(APIView):
             except Payment.DoesNotExist:
                 logger.warning(f"Payment not found for payment intent: {payment_intent['id']}")
         
-        return Response({"success": True}, status=status.HTTP_200_OK) 
+        return Response({"success": True}, status=status.HTTP_200_OK)
+
+class ExchangeRateViewSet(viewsets.ModelViewSet):
+    """API endpoint for currency exchange rates."""
+    queryset = ExchangeRate.objects.all()
+    serializer_class = ExchangeRateSerializer
+    permission_classes = [AllowAny]
+    
+    def get_queryset(self):
+        base_currency = self.request.query_params.get('base_currency', 'USD')
+        target_currency = self.request.query_params.get('target_currency', None)
+        
+        queryset = ExchangeRate.objects.filter(base_currency=base_currency)
+        
+        if target_currency:
+            queryset = queryset.filter(target_currency=target_currency)
+            
+        return queryset
+    
+    @action(detail=False, methods=['get'])
+    def refresh(self, request):
+        """Refresh exchange rates from external API."""
+        try:
+            # Set default base currency to USD
+            base_currency = request.query_params.get('base_currency', 'USD')
+            
+            # Check if we need to refresh rates
+            last_update = ExchangeRate.objects.filter(base_currency=base_currency).order_by('-last_updated').first()
+            
+            # Only update if rates are older than 1 hour or don't exist
+            if not last_update or last_update.last_updated < timezone.now() - timedelta(hours=1):
+                # Use Exchange Rates API - replace with your preferred provider
+                api_key = settings.EXCHANGE_RATE_API_KEY
+                api_url = f"https://api.exchangerate-api.com/v4/latest/{base_currency}"
+                
+                response = requests.get(api_url)
+                data = response.json()
+                
+                if response.status_code == 200 and 'rates' in data:
+                    # Update all exchange rates
+                    for currency, rate in data['rates'].items():
+                        ExchangeRate.objects.update_or_create(
+                            base_currency=base_currency,
+                            target_currency=currency,
+                            defaults={'rate': rate}
+                        )
+                    
+                    return Response({
+                        'success': True,
+                        'message': 'Exchange rates updated successfully',
+                        'last_updated': timezone.now()
+                    })
+                else:
+                    # Fallback to default rates
+                    default_rates = {
+                        'USD': 1.0,
+                        'EUR': 0.85,
+                        'GBP': 0.73,
+                        'JPY': 110.32,
+                        'CAD': 1.25,
+                        'AUD': 1.33,
+                    }
+                    
+                    for currency, rate in default_rates.items():
+                        # Skip the base currency itself
+                        if currency != base_currency:
+                            ExchangeRate.objects.update_or_create(
+                                base_currency=base_currency,
+                                target_currency=currency,
+                                defaults={'rate': rate}
+                            )
+                    
+                    return Response({
+                        'success': True,
+                        'message': 'Using default exchange rates',
+                        'last_updated': timezone.now()
+                    })
+            
+            # Return current rates if they're recent enough
+            serializer = ExchangeRateSerializer(
+                ExchangeRate.objects.filter(base_currency=base_currency),
+                many=True
+            )
+            
+            return Response({
+                'success': True,
+                'message': 'Using existing exchange rates',
+                'last_updated': last_update.last_updated,
+                'rates': serializer.data
+            })
+            
+        except Exception as e:
+            logger.error(f"Error refreshing exchange rates: {str(e)}")
+            return Response({
+                'success': False,
+                'error': str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR) 

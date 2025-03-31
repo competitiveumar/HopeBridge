@@ -67,10 +67,15 @@ class DisasterProjectViewSet(viewsets.ReadOnlyModelViewSet):
     def donate(self, request, slug=None):
         """Endpoint for making donations to a specific project"""
         project = self.get_object()
-        serializer = self.get_serializer(data=request.data)
+        
+        # Add the project to the request data
+        data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
+        
+        # Create serializer with the project already included
+        serializer = DisasterDonationSerializer(data=data)
         
         if serializer.is_valid():
-            serializer.save(project=project)
+            donation = serializer.save(project=project)
             return Response(
                 {"message": "Thank you for your donation!", "data": serializer.data},
                 status=status.HTTP_201_CREATED

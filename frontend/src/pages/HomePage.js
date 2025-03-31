@@ -42,6 +42,8 @@ import TwitterIcon from '@mui/icons-material/Twitter';
 import InstagramIcon from '@mui/icons-material/Instagram';
 import LinkedInIcon from '@mui/icons-material/LinkedIn';
 import { useCart } from '../contexts/CartContext';
+import { useDonation } from '../contexts/DonationContext';
+import { useAuth } from '../contexts/AuthContext';
 
 // Import axios from our mock in test environment or real axios in production
 let axios;
@@ -232,11 +234,19 @@ const HomePage = () => {
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const navigate = useNavigate();
   const { addToCart } = useCart();
+  const { user } = useAuth();
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: '',
     severity: 'success'
   });
+  const { getUpdatedProjectTotal } = useDonation();
+
+  // Check if the user is a volunteer
+  const isVolunteer = user && user.user_type === 'volunteer';
+  
+  // Check if any user is logged in
+  const isLoggedIn = !!user;
 
   // In a real app, we would fetch campaigns from the API
   useEffect(() => {
@@ -391,13 +401,27 @@ const HomePage = () => {
     setSnackbar(prev => ({ ...prev, open: false }));
   };
 
+  // Calculate updated project totals including recent donations
+  const getDisplayTotal = (project) => {
+    if (!project || !project.raised) return 0;
+    return getUpdatedProjectTotal(project.id, project.raised);
+  };
+
+  // Calculate updated progress percentage
+  const getDisplayProgress = (project) => {
+    if (!project || !project.raised || !project.goal) return 0;
+    const updatedTotal = getDisplayTotal(project);
+    const progress = Math.min(Math.round((updatedTotal / project.goal) * 100), 100);
+    return progress;
+  };
+
   return (
     <Box>
       {/* Hero Section with Video or Image Background */}
       <Box 
         sx={{ 
           position: 'relative',
-          height: '80vh',
+          height: '60vh',
           backgroundImage: 'url("https://images.unsplash.com/photo-1593113630400-ea4288922497?q=80&w=1470&auto=format&fit=crop")',
           backgroundSize: 'cover',
           backgroundPosition: 'center',
@@ -421,16 +445,18 @@ const HomePage = () => {
           <Typography variant="h5" color="white" mb={4} sx={{ maxWidth: 600 }}>
           Support vetted nonprofits and make a lasting impact in communities worldwide.
         </Typography>
-        <Button
-          variant="contained"
-          color="primary"
+        {!isVolunteer && (
+          <Button
+            variant="contained"
+            color="primary"
             size="large"
-          component={RouterLink}
-          to="/donations"
+            component={RouterLink}
+            to="/donations"
             sx={{ mr: 2 }}
-        >
-          Donate Now
-        </Button>
+          >
+            Donate Now
+          </Button>
+        )}
           <Button 
             variant="outlined" 
             color="inherit"
@@ -526,85 +552,87 @@ const HomePage = () => {
         </Container>
       </Box>
 
-      {/* Featured Campaigns */}
-      <Box sx={{ py: 8, bgcolor: 'background.default' }}>
-        <Container>
-          <Typography variant="h3" component="h2" align="center" gutterBottom>
-            Featured Campaigns
-          </Typography>
-          <Typography variant="h6" align="center" color="text.secondary" paragraph>
-            Support these urgent causes that need your help right now
-                </Typography>
-          <Grid container spacing={4}>
-            {featuredCampaigns.map((campaign) => (
-              <Grid item key={campaign.id} xs={12} md={4}>
-                <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-                  <CardMedia
-                    component="img"
-                    height="240"
-                    image={campaign.image}
-                    alt={campaign.title}
-                    sx={{
-                      objectFit: 'cover',
-                    }}
-                  />
-                  <CardContent sx={{ flexGrow: 1 }}>
-                    <Typography gutterBottom variant="h5" component="h3">
-                      {campaign.title}
-                </Typography>
-                    <Typography color="text.secondary" paragraph>
-                      {campaign.description}
-                    </Typography>
-                    <Box sx={{ mt: 2 }}>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                        <Typography variant="body2" color="text.secondary">
-                          Raised: £{campaign.raised.toLocaleString()}
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          Goal: £{campaign.goal.toLocaleString()}
-                        </Typography>
+      {/* Featured Campaigns - Hide for volunteers */}
+      {!isVolunteer && (
+        <Box sx={{ py: 8, bgcolor: 'background.default' }}>
+          <Container>
+            <Typography variant="h3" component="h2" align="center" gutterBottom>
+              Featured Campaigns
+            </Typography>
+            <Typography variant="h6" align="center" color="text.secondary" paragraph>
+              Support these urgent causes that need your help right now
+            </Typography>
+            <Grid container spacing={4}>
+              {featuredCampaigns.map((campaign) => (
+                <Grid item key={campaign.id} xs={12} md={4}>
+                  <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+                    <CardMedia
+                      component="img"
+                      height="240"
+                      image={campaign.image}
+                      alt={campaign.title}
+                      sx={{
+                        objectFit: 'cover',
+                      }}
+                    />
+                    <CardContent sx={{ flexGrow: 1 }}>
+                      <Typography gutterBottom variant="h5" component="h3">
+                        {campaign.title}
+                      </Typography>
+                      <Typography color="text.secondary" paragraph>
+                        {campaign.description}
+                      </Typography>
+                      <Box sx={{ mt: 2 }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                          <Typography variant="body2" color="text.secondary">
+                            Raised: £{campaign.raised.toLocaleString()}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            Goal: £{campaign.goal.toLocaleString()}
+                          </Typography>
+                        </Box>
+                        <Box sx={{ position: 'relative', mt: 1, mb: 2 }}>
+                          <Box
+                            sx={{
+                              width: '100%',
+                              height: 8,
+                              backgroundColor: 'grey.200',
+                              borderRadius: 4,
+                            }}
+                          />
+                          <Box
+                            sx={{
+                              position: 'absolute',
+                              top: 0,
+                              left: 0,
+                              width: `${(campaign.raised / campaign.goal) * 100}%`,
+                              height: 8,
+                              backgroundColor: 'primary.main',
+                              borderRadius: 4,
+                            }}
+                          />
+                        </Box>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <Typography variant="body2" color="text.secondary">
+                            {campaign.daysLeft} days left
+                          </Typography>
+                          <Button
+                            variant="contained"
+                            color="primary"
+                            onClick={() => handleOpenDonateDialog(campaign)}
+                          >
+                            Donate Now
+                          </Button>
+                        </Box>
                       </Box>
-                      <Box sx={{ position: 'relative', mt: 1, mb: 2 }}>
-                        <Box
-                          sx={{
-                            width: '100%',
-                            height: 8,
-                            backgroundColor: 'grey.200',
-                            borderRadius: 4,
-                          }}
-                        />
-                        <Box
-                          sx={{
-                            position: 'absolute',
-                            top: 0,
-                            left: 0,
-                            width: `${(campaign.raised / campaign.goal) * 100}%`,
-                            height: 8,
-                            backgroundColor: 'primary.main',
-                            borderRadius: 4,
-                          }}
-                        />
-                      </Box>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <Typography variant="body2" color="text.secondary">
-                          {campaign.daysLeft} days left
-                        </Typography>
-                        <Button
-                          variant="contained"
-                          color="primary"
-                          onClick={() => handleOpenDonateDialog(campaign)}
-                        >
-                          Donate Now
-                        </Button>
-                      </Box>
-                    </Box>
-                  </CardContent>
-                </Card>
-              </Grid>
-            ))}
-          </Grid>
-        </Container>
-      </Box>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              ))}
+            </Grid>
+          </Container>
+        </Box>
+      )}
 
       {/* About Our Mission */}
       <Box sx={{ bgcolor: 'grey.100', py: 8 }}>
@@ -625,12 +653,12 @@ const HomePage = () => {
             <Grid item xs={12} md={6}>
               <Typography variant="h4" gutterBottom>
                 Our Mission
-        </Typography>
+              </Typography>
               <Typography variant="body1" paragraph>
                 At HopeBridge, we believe in creating sustainable change through compassionate action. 
                 Our platform connects donors with verified nonprofits around the world, ensuring your 
                 contributions make the maximum impact.
-          </Typography>
+              </Typography>
               <Typography variant="body1" paragraph>
                 We focus on transparency, accountability, and efficiency in charitable giving. 
                 Every donation is tracked, and we provide regular updates on how your generosity 
@@ -646,7 +674,7 @@ const HomePage = () => {
                 Learn More About Us
               </Button>
             </Grid>
-            </Grid>
+          </Grid>
         </Container>
       </Box>
 
@@ -686,8 +714,8 @@ const HomePage = () => {
               </Card>
             </Grid>
           ))}
-          </Grid>
-        </Container>
+        </Grid>
+      </Container>
 
       {/* How to Help Section */}
       <Box sx={{ bgcolor: 'primary.main', color: 'white', py: 8 }}>
@@ -708,16 +736,26 @@ const HomePage = () => {
                 <Typography variant="body2">
                   Make a one-time or recurring donation to support our causes. 
                   Even small amounts can make a big difference.
-                    </Typography>
-                    <Button 
+                </Typography>
+                <Button 
                   variant="outlined" 
-                  sx={{ mt: 2 }}
+                  sx={{ mt: 2, mr: 1 }}
                   onClick={() => handleOpenDonateDialog()}
-                    >
-                      Give Now
-                    </Button>
+                >
+                  Give Now
+                </Button>
+                {!isLoggedIn && (
+                  <Button 
+                    variant="outlined" 
+                    sx={{ mt: 2 }}
+                    component={RouterLink}
+                    to="/register-donor"
+                  >
+                    Register as Donor
+                  </Button>
+                )}
               </Paper>
-              </Grid>
+            </Grid>
             <Grid item xs={12} md={4}>
               <Paper sx={{ p: 3, height: '100%', textAlign: 'center' }}>
                 <Box
@@ -733,12 +771,22 @@ const HomePage = () => {
                 </Typography>
                 <Button 
                   variant="outlined" 
-                  sx={{ mt: 2 }}
+                  sx={{ mt: 2, mr: 1 }}
                   component={RouterLink}
                   to="/events"
                 >
                   Get Involved
                 </Button>
+                {!isLoggedIn && (
+                  <Button 
+                    variant="outlined" 
+                    sx={{ mt: 2 }}
+                    component={RouterLink}
+                    to="/register-volunteer"
+                  >
+                    Register as Volunteer
+                  </Button>
+                )}
               </Paper>
             </Grid>
             <Grid item xs={12} md={4}>
@@ -768,220 +816,222 @@ const HomePage = () => {
         </Container>
       </Box>
 
-      {/* Search Projects */}
-      <Box sx={{ bgcolor: 'grey.200', py: 4 }}>
-        <Container maxWidth="lg">
-          <Typography variant="h4" align="center" gutterBottom>
-            Search Projects
-          </Typography>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
-            <TextField
-              fullWidth
-              placeholder="Search for projects, causes, or locations..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              InputProps={{
-                endAdornment: <SearchIcon />,
-              }}
-            />
-          </Box>
-          <Grid container spacing={2}>
-            <Grid item xs={12} sm={3}>
-              <FormControl fullWidth>
-                <InputLabel>Category</InputLabel>
-                <Select
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value)}
-                  label="Category"
-                >
-                  {categories.map((cat) => (
-                    <MenuItem key={cat} value={cat}>{cat}</MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid item xs={12} sm={3}>
-              <FormControl fullWidth>
-                <InputLabel>Location</InputLabel>
-                <Select
-                  value={location}
-                  onChange={(e) => setLocation(e.target.value)}
-                  label="Location"
-                >
-                  {locations.map((loc) => (
-                    <MenuItem key={loc} value={loc}>{loc}</MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid item xs={12} sm={3}>
-              <FormControl fullWidth>
-                <InputLabel>Project Size</InputLabel>
-                <Select
-                  value={projectSize}
-                  onChange={(e) => setProjectSize(e.target.value)}
-                  label="Project Size"
-                >
-                  {projectSizes.map((size) => (
-                    <MenuItem key={size} value={size}>{size}</MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid item xs={12} sm={3}>
-              <FormControl fullWidth>
-                <InputLabel>Theme</InputLabel>
-                <Select
-                  value={themeFilter}
-                  onChange={(e) => setThemeFilter(e.target.value)}
-                  label="Theme"
-                >
-                  {themes.map((theme) => (
-                    <MenuItem key={theme} value={theme}>{theme}</MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
-          </Grid>
-
-          {/* Search Results */}
-          <Box sx={{ mt: 4 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-              <Typography variant="h6">
-                Search Results ({filteredProjects.length})
-              </Typography>
-              <Typography variant="body2">Page {page} of {totalPages}</Typography>
-            </Box>
-            
-            <Grid container spacing={3}>
-              {displayedProjects.map((project) => (
-                <Grid item xs={12} key={project.id}>
-                  <Card>
-                    <Grid container>
-                      <Grid item xs={12} md={4}>
-                        <CardMedia
-                          component="img"
-                          height="200"
-                          image={project.image}
-                          alt={project.title}
-                          sx={{ objectFit: 'cover' }}
-                        />
-                      </Grid>
-                      <Grid item xs={12} md={8}>
-                    <CardContent>
-                      <Typography variant="h6">{project.title}</Typography>
-                      <Typography variant="body2" color="text.secondary" paragraph>
-                        {project.description}
-                      </Typography>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                        <Typography variant="body2">
-                          Location: {project.location}
-                        </Typography>
-                        <Typography variant="body2">
-                          Category: {project.category}
-                        </Typography>
-                        <Typography variant="body2">
-                          Theme: {project.theme}
-                        </Typography>
-                      </Box>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <Typography>
-                          £{project.raised.toLocaleString()} raised of £{project.goal.toLocaleString()}
-                        </Typography>
-                        <Typography>
-                          {Math.round((project.raised / project.goal) * 100)}% funded
-                        </Typography>
-                      </Box>
-                          <Box sx={{ position: 'relative', mt: 2, mb: 2 }}>
-                            <Box
-                              sx={{
-                                width: '100%',
-                                height: 8,
-                                backgroundColor: 'grey.200',
-                                borderRadius: 4,
-                              }}
-                            />
-                            <Box
-                              sx={{
-                                position: 'absolute',
-                                top: 0,
-                                left: 0,
-                                width: `${(project.raised / project.goal) * 100}%`,
-                                height: 8,
-                                backgroundColor: 'primary.main',
-                                borderRadius: 4,
-                              }}
-                            />
-                          </Box>
-                      <Button 
-                        variant="contained" 
-                        color="primary" 
-                        onClick={() => handleOpenDonateDialog({ 
-                          ...project,
-                          isProject: true
-                        })}
-                      >
-                        Donate
-                      </Button>
-                    </CardContent>
-                      </Grid>
-                    </Grid>
-                  </Card>
-                </Grid>
-              ))}
-            </Grid>
-
-            {/* Updated Pagination */}
-            <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4, gap: 1 }}>
-              <Button
-                variant="outlined"
-                disabled={page === 1}
-                onClick={() => setPage(1)}
-                sx={{ minWidth: 40, p: 0 }}
-              >
-                ⟪
-              </Button>
-              <Button
-                variant="outlined"
-                disabled={page === 1}
-                onClick={() => setPage(page - 1)}
-                sx={{ minWidth: 40, p: 0 }}
-              >
-                ‹
-              </Button>
-              <Button
-                variant="contained"
-                sx={{ 
-                  minWidth: 40, 
-                  p: 0,
-                  bgcolor: 'primary.main',
-                  '&:hover': {
-                    bgcolor: 'primary.dark',
-                  }
+      {/* Search Projects - Hide for volunteers */}
+      {!isVolunteer && (
+        <Box sx={{ bgcolor: 'grey.200', py: 4 }}>
+          <Container maxWidth="lg">
+            <Typography variant="h4" align="center" gutterBottom>
+              Search Projects
+            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
+              <TextField
+                fullWidth
+                placeholder="Search for projects, causes, or locations..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                InputProps={{
+                  endAdornment: <SearchIcon />,
                 }}
-              >
-                {page}
-              </Button>
-              <Button
-                variant="outlined"
-                disabled={page === totalPages}
-                onClick={() => setPage(page + 1)}
-                sx={{ minWidth: 40, p: 0 }}
-              >
-                ›
-              </Button>
-              <Button
-                variant="outlined"
-                disabled={page === totalPages}
-                onClick={() => setPage(totalPages)}
-                sx={{ minWidth: 40, p: 0 }}
-              >
-                ⟫
-              </Button>
+              />
             </Box>
-          </Box>
-        </Container>
-      </Box>
+            <Grid container spacing={2}>
+              <Grid item xs={12} sm={3}>
+                <FormControl fullWidth>
+                  <InputLabel>Category</InputLabel>
+                  <Select
+                    value={category}
+                    onChange={(e) => setCategory(e.target.value)}
+                    label="Category"
+                  >
+                    {categories.map((cat) => (
+                      <MenuItem key={cat} value={cat}>{cat}</MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+              <Grid item xs={12} sm={3}>
+                <FormControl fullWidth>
+                  <InputLabel>Location</InputLabel>
+                  <Select
+                    value={location}
+                    onChange={(e) => setLocation(e.target.value)}
+                    label="Location"
+                  >
+                    {locations.map((loc) => (
+                      <MenuItem key={loc} value={loc}>{loc}</MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+              <Grid item xs={12} sm={3}>
+                <FormControl fullWidth>
+                  <InputLabel>Project Size</InputLabel>
+                  <Select
+                    value={projectSize}
+                    onChange={(e) => setProjectSize(e.target.value)}
+                    label="Project Size"
+                  >
+                    {projectSizes.map((size) => (
+                      <MenuItem key={size} value={size}>{size}</MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+              <Grid item xs={12} sm={3}>
+                <FormControl fullWidth>
+                  <InputLabel>Theme</InputLabel>
+                  <Select
+                    value={themeFilter}
+                    onChange={(e) => setThemeFilter(e.target.value)}
+                    label="Theme"
+                  >
+                    {themes.map((theme) => (
+                      <MenuItem key={theme} value={theme}>{theme}</MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+            </Grid>
+
+            {/* Search Results */}
+            <Box sx={{ mt: 4 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+                <Typography variant="h6">
+                  Search Results ({filteredProjects.length})
+                </Typography>
+                <Typography variant="body2">Page {page} of {totalPages}</Typography>
+              </Box>
+              
+              <Grid container spacing={3}>
+                {displayedProjects.map((project) => (
+                  <Grid item xs={12} key={project.id}>
+                    <Card>
+                      <Grid container>
+                        <Grid item xs={12} md={4}>
+                          <CardMedia
+                            component="img"
+                            height="200"
+                            image={project.image}
+                            alt={project.title}
+                            sx={{ objectFit: 'cover' }}
+                          />
+                        </Grid>
+                        <Grid item xs={12} md={8}>
+                          <CardContent>
+                            <Typography variant="h6">{project.title}</Typography>
+                            <Typography variant="body2" color="text.secondary" paragraph>
+                              {project.description}
+                            </Typography>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                              <Typography variant="body2">
+                                Location: {project.location}
+                              </Typography>
+                              <Typography variant="body2">
+                                Category: {project.category}
+                              </Typography>
+                              <Typography variant="body2">
+                                Theme: {project.theme}
+                              </Typography>
+                            </Box>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <Typography>
+                                £{getDisplayTotal(project).toLocaleString()} raised of £{project.goal.toLocaleString()}
+                              </Typography>
+                              <Typography>
+                                {getDisplayProgress(project)}% funded
+                              </Typography>
+                            </Box>
+                              <Box sx={{ position: 'relative', mt: 2, mb: 2 }}>
+                                <Box
+                                  sx={{
+                                    width: '100%',
+                                    height: 8,
+                                    backgroundColor: 'grey.200',
+                                    borderRadius: 4,
+                                  }}
+                                />
+                                <Box
+                                  sx={{
+                                    position: 'absolute',
+                                    top: 0,
+                                    left: 0,
+                                    width: `${getDisplayProgress(project)}%`,
+                                    height: 8,
+                                    backgroundColor: 'primary.main',
+                                    borderRadius: 4,
+                                  }}
+                                />
+                              </Box>
+                            <Button 
+                              variant="contained" 
+                              color="primary" 
+                              onClick={() => handleOpenDonateDialog({ 
+                                ...project,
+                                isProject: true
+                              })}
+                            >
+                              Donate
+                            </Button>
+                          </CardContent>
+                        </Grid>
+                      </Grid>
+                    </Card>
+                  </Grid>
+                ))}
+              </Grid>
+
+              {/* Updated Pagination */}
+              <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4, gap: 1 }}>
+                <Button
+                  variant="outlined"
+                  disabled={page === 1}
+                  onClick={() => setPage(1)}
+                  sx={{ minWidth: 40, p: 0 }}
+                >
+                  ⟪
+                </Button>
+                <Button
+                  variant="outlined"
+                  disabled={page === 1}
+                  onClick={() => setPage(page - 1)}
+                  sx={{ minWidth: 40, p: 0 }}
+                >
+                  ‹
+                </Button>
+                <Button
+                  variant="contained"
+                  sx={{ 
+                    minWidth: 40, 
+                    p: 0,
+                    bgcolor: 'primary.main',
+                    '&:hover': {
+                      bgcolor: 'primary.dark',
+                    }
+                  }}
+                >
+                  {page}
+                </Button>
+                <Button
+                  variant="outlined"
+                  disabled={page === totalPages}
+                  onClick={() => setPage(page + 1)}
+                  sx={{ minWidth: 40, p: 0 }}
+                >
+                  ›
+                </Button>
+                <Button
+                  variant="outlined"
+                  disabled={page === totalPages}
+                  onClick={() => setPage(totalPages)}
+                  sx={{ minWidth: 40, p: 0 }}
+                >
+                  ⟫
+                </Button>
+              </Box>
+            </Box>
+          </Container>
+        </Box>
+      )}
 
       {/* Newsletter */}
       <Box sx={{ py: 4, textAlign: 'center' }}>
@@ -1008,7 +1058,7 @@ const HomePage = () => {
       {/* Cart Success Snackbar */}
       <Snackbar
         open={snackbar.open}
-        autoHideDuration={3000}
+        autoHideDuration={6000}
         onClose={handleSnackbarClose}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       >
@@ -1059,10 +1109,10 @@ const HomePage = () => {
           {selectedNewsItem?.isProject && selectedNewsItem.raised && selectedNewsItem.goal && (
             <Box sx={{ mb: 3 }}>
               <Typography variant="body2" color="text.secondary">
-                Project Progress: {Math.round((selectedNewsItem.raised / selectedNewsItem.goal) * 100)}% funded
+                Project Progress: {getDisplayProgress(selectedNewsItem)}% funded
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                £{selectedNewsItem.raised.toLocaleString()} raised of £{selectedNewsItem.goal.toLocaleString()}
+                £{getDisplayTotal(selectedNewsItem).toLocaleString()} raised of £{selectedNewsItem.goal.toLocaleString()}
               </Typography>
             </Box>
           )}

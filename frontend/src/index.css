@@ -559,4 +559,91 @@ body {
 
 .no-transition {
   transition: none !important;
+}
+
+/* Accessibility Widget and Chatbot Styles */
+.accessibility-widget,
+.chatbot-widget {
+  position: fixed;
+  z-index: 9999;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform, opacity;
+}
+
+.accessibility-widget button,
+.chatbot-widget button {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform, opacity, background-color;
+}
+
+.accessibility-drawer {
+  z-index: 10000;
+}
+
+.accessibility-drawer .MuiDrawer-paper {
+  width: 300px;
+  padding: 16px;
+}
+
+/* Ensure proper stacking context */
+#root {
+  position: relative;
+  z-index: 1;
+}
+
+/* Smooth transitions for scroll behavior */
+@media (prefers-reduced-motion: no-preference) {
+  .accessibility-widget,
+  .chatbot-widget {
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+}
+
+/* Disable transitions for users who prefer reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .accessibility-widget,
+  .chatbot-widget {
+    transition: none;
+  }
+}
+
+/* Mobile optimizations */
+@media (max-width: 600px) {
+  .accessibility-widget,
+  .chatbot-widget {
+    bottom: 80px;
+  }
+  
+  .accessibility-widget button,
+  .chatbot-widget button {
+    width: 48px;
+    height: 48px;
+  }
+}
+
+/* Ensure buttons are visible when needed */
+.accessibility-widget:hover,
+.chatbot-widget:hover,
+.accessibility-widget:focus-within,
+.chatbot-widget:focus-within {
+  opacity: 1 !important;
+  transform: translateY(0) !important;
+}
+
+/* Prevent filter from affecting fixed elements */
+body > *:not(.accessibility-widget):not(.chatbot-widget):not(.MuiDrawer-root) {
+  transition: filter 0.3s ease;
+}
+
+/* Ensure proper contrast for text in grayscale mode */
+body.grayscale {
+  background-color: #ffffff;
+}
+
+/* Ensure proper contrast for accessibility widget in all modes */
+.accessibility-widget button,
+.chatbot-widget button {
+  background-color: var(--primary-color, #1976d2) !important;
+  color: #ffffff !important;
 } 

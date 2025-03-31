@@ -101,10 +101,6 @@ class GiftCardRedemptionSerializer(serializers.ModelSerializer):
         gift_card = validated_data['gift_card']
         gift_card.redeem(user)
         
-        # Create redemption record
-        redemption = GiftCardRedemption.objects.create(
-            **validated_data,
-            redeemed_by=user
-        )
-        
-        return redemption 
+        # Create redemption record without passing redeemed_by explicitly
+        # as it will be set by the view's perform_create method
+        return super().create(validated_data) 

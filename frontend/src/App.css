@@ -18,6 +18,34 @@
   min-height: calc(100vh - 64px - 200px); /* Adjust based on header and footer height */
 }
 
+/* Enhanced responsive styles */
+@media (max-width: 600px) {
+  .main-content {
+    padding: 16px;
+    min-height: calc(100vh - 56px - 180px); /* Adjusted for smaller header/footer on mobile */
+  }
+}
+
+/* Container width adjustments for different screen sizes */
+.responsive-container {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+@media (max-width: 900px) {
+  .responsive-container {
+    padding: 0 20px;
+  }
+}
+
+@media (max-width: 600px) {
+  .responsive-container {
+    padding: 0 16px;
+  }
+}
+
 /* Skip link for accessibility */
 .skip-link {
   position: absolute;
@@ -54,4 +82,24 @@
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border: 0;
+}
+
+/* Responsive image handling */
+.responsive-img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* Responsive flex layouts */
+.responsive-flex {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+@media (max-width: 600px) {
+  .responsive-flex {
+    gap: 16px;
+  }
 } 

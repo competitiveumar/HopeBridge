@@ -24,17 +24,24 @@ from django.dispatch import receiver
 
 class UserProfile(models.Model):
     """Profile model to extend the default Django User model."""
+    USER_TYPE_CHOICES = (
+        ('donor', 'Donor'),
+        ('volunteer', 'Volunteer'),
+    )
+    
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
-    phone_number = models.CharField(max_length=20, blank=True)
-    bio = models.TextField(max_length=500, blank=True)
+    user_type = models.CharField(max_length=10, choices=USER_TYPE_CHOICES, default='donor')
+    phone_number = models.CharField(max_length=20, blank=True, null=True)
+    bio = models.TextField(blank=True, null=True)
     profile_image = models.ImageField(upload_to='profile_images/', null=True, blank=True)
     
-    # Address information
-    address = models.CharField(max_length=255, blank=True)
-    city = models.CharField(max_length=100, blank=True)
-    state = models.CharField(max_length=100, blank=True)
-    zip_code = models.CharField(max_length=20, blank=True)
-    country = models.CharField(max_length=100, blank=True)
+    # Contact information
+    phone = models.CharField(max_length=20, blank=True, null=True)
+    address = models.CharField(max_length=255, blank=True, null=True)
+    city = models.CharField(max_length=100, blank=True, null=True)
+    state = models.CharField(max_length=100, blank=True, null=True)
+    zip_code = models.CharField(max_length=20, blank=True, null=True)
+    country = models.CharField(max_length=100, blank=True, null=True)
     
     # Notification settings
     email_notifications = models.BooleanField(default=True)
@@ -43,7 +50,15 @@ class UserProfile(models.Model):
     donation_receipts = models.BooleanField(default=True)
     event_reminders = models.BooleanField(default=True)
     
+    # Social login provider
+    provider = models.CharField(max_length=20, blank=True, null=True, choices=[
+        ('email', 'Email'),
+        ('google', 'Google'),
+        ('facebook', 'Facebook')
+    ], default='email')
+    
     date_updated = models.DateTimeField(auto_now=True)
+    date_of_birth = models.DateField(null=True, blank=True)
 
     class Meta:
         app_label = 'users'

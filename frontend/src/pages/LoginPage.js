@@ -22,6 +22,8 @@ import { Visibility, VisibilityOff, LockOutlined as LockOutlinedIcon } from '@mu
 import GoogleIcon from '@mui/icons-material/Google';
 import FacebookIcon from '@mui/icons-material/Facebook';
 import { useAuth } from '../contexts/AuthContext';
+import { signInWithGoogle, signInWithFacebook } from '../config/firebase';
+import { socialAuth } from '../services/authService';
 
 // Copyright component
 const Copyright = (props) => {
@@ -47,7 +49,7 @@ const LoginPage = () => {
   const [loginError, setLoginError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  const { login, loginWithGoogle, loginWithFacebook } = useAuth();
+  const { login } = useAuth();
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -94,10 +96,15 @@ const LoginPage = () => {
         setLoginError('');
         setLoading(true);
         // Call the login function from AuthContext
-        await login(formData.email, formData.password);
+        const userData = await login(formData.email, formData.password);
         
-        // Redirect to home page on successful login
-        navigate('/');
+        // Redirect to appropriate dashboard based on user type
+        if (userData && userData.user_type === 'volunteer') {
+          navigate('/volunteer-dashboard');
+        } else {
+          // Default to donor dashboard
+          navigate('/dashboard');
+        }
       } catch (error) {
         console.error('Login error:', error);
         // Set a user-friendly error message based on error code
@@ -127,24 +134,75 @@ const LoginPage = () => {
     if (provider === 'Google') {
       try {
         setLoginError('');
-        await loginWithGoogle();
-        navigate('/');
+        setLoading(true);
+        const result = await signInWithGoogle();
+        if (result.success) {
+          // Extract user data
+          const userData = result.user;
+          console.log('Google login successful:', userData);
+          
+          // Get the provider ID (google.com -> google)
+          let providerName = 'google';
+          if (userData.providerData && userData.providerData.length > 0) {
+            const providerId = userData.providerData[0].providerId || '';
+            providerName = providerId.replace('.com', '');
+          }
+          
+          // Get token
+          const token = result.token || userData.accessToken || userData.stsTokenManager?.accessToken;
+          
+          if (!token) {
+            throw new Error('No access token available from authentication provider');
+          }
+          
+          // Send to backend
+          await socialAuth(providerName, token, userData);
+          
+          // Navigate to appropriate page
+          navigate('/dashboard');
+        } else {
+          throw new Error(result.error || 'Google login failed');
+        }
       } catch (error) {
         console.error('Google login error:', error);
-        setLoginError('An error occurred during Google login. Please try again.');
+        setLoginError(error.message || 'An error occurred during Google login. Please try again.');
+      } finally {
+        setLoading(false);
       }
     } else if (provider === 'Facebook') {
       try {
         setLoginError('');
-        await loginWithFacebook();
-        navigate('/');
+        setLoading(true);
+        const result = await signInWithFacebook();
+        if (result.success) {
+          // Extract user data
+          const userData = result.user;
+          console.log('Facebook login successful:', userData);
+          
+          // Get token
+          const token = result.token || userData.accessToken || userData.stsTokenManager?.accessToken;
+          
+          if (!token) {
+            throw new Error('No access token available from authentication provider');
+          }
+          
+          // Send to backend
+          await socialAuth('facebook', token, userData);
+          
+          // Navigate to appropriate page
+          navigate('/dashboard');
+        } else {
+          throw new Error(result.error || 'Facebook login failed');
+        }
       } catch (error) {
         console.error('Facebook login error:', error);
         if (error.code === 'auth/account-exists-with-different-credential') {
           setLoginError('An account already exists with the same email address but different sign-in credentials. Try signing in a different way.');
         } else {
-          setLoginError('An error occurred during Facebook login. Please try again.');
+          setLoginError(error.message || 'An error occurred during Facebook login. Please try again.');
         }
+      } finally {
+        setLoading(false);
       }
     }
   };
